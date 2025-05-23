@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, mock, spyOn } from 'bun:test';
+import { beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { z } from 'zod';
 import { CC } from '../src/cc';
 
@@ -8,7 +8,7 @@ mock.module('fs', () => ({
   existsSync: mock(() => false),
 }));
 
-import { readFileSync, existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 
 // Get mocked functions
 const mockedReadFileSync = readFileSync as ReturnType<typeof mock>;
@@ -46,7 +46,7 @@ describe('CC', () => {
     mockProcess.kill.mockClear();
     mockedReadFileSync.mockClear();
     mockedExistsSync.mockClear();
-    
+
     cc = new CC();
     mockSpawn.mockImplementation(() => mockProcess as any);
 

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, mock, spyOn } from 'bun:test';
+import { beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { CCProcess } from '../src/process';
 import type { CCOptions, PromptConfig } from '../src/types';
 
@@ -46,7 +46,7 @@ describe('CCProcess', () => {
     mockProcess.kill.mockClear();
     mockedExistsSync.mockClear();
     mockedReadFileSync.mockClear();
-    
+
     process = new CCProcess({ verbose: false });
     mockSpawn.mockImplementation(() => mockProcess as any);
   });
@@ -146,33 +146,37 @@ describe('CCProcess', () => {
       expect(result.stderr).toBe('Error occurred');
     });
 
-    test.skip('should handle timeout', async () => {
-      let resolveExited: (value: number) => void;
-      mockProcess.exited = new Promise((resolve) => {
-        resolveExited = resolve;
-      });
+    test.skip(
+      'should handle timeout',
+      async () => {
+        let resolveExited: (value: number) => void;
+        mockProcess.exited = new Promise((resolve) => {
+          resolveExited = resolve;
+        });
 
-      mockProcess.stdout.getReader.mockReturnValue({
-        read: mock(() => new Promise(() => {})), // Never resolves
-      });
-      mockProcess.stderr.getReader.mockReturnValue({
-        read: mock(() => Promise.resolve({ done: true })),
-      });
+        mockProcess.stdout.getReader.mockReturnValue({
+          read: mock(() => new Promise(() => {})), // Never resolves
+        });
+        mockProcess.stderr.getReader.mockReturnValue({
+          read: mock(() => Promise.resolve({ done: true })),
+        });
 
-      const executePromise = process.execute('Test', { timeout: 100 });
+        const executePromise = process.execute('Test', { timeout: 100 });
 
-      // Wait a bit for the timeout to trigger
-      await new Promise(resolve => setTimeout(resolve, 150));
+        // Wait a bit for the timeout to trigger
+        await new Promise((resolve) => setTimeout(resolve, 150));
 
-      // Resolve the process exit
-      resolveExited!(0);
+        // Resolve the process exit
+        resolveExited!(0);
 
-      const result = await executePromise;
+        const result = await executePromise;
 
-      expect(mockProcess.kill).toHaveBeenCalled();
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('timeout');
-    }, { timeout: 5000 });
+        expect(mockProcess.kill).toHaveBeenCalled();
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('timeout');
+      },
+      { timeout: 5000 }
+    );
 
     test('should handle spawn errors', async () => {
       mockSpawn.mockImplementation(() => {

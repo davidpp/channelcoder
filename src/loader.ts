@@ -6,16 +6,18 @@ import type { PromptConfig } from './types.js';
 /**
  * Zod schema for frontmatter validation
  */
-export const FrontmatterSchema = z.object({
-  systemPrompt: z.string().optional(),
-  appendSystemPrompt: z.string().optional(),
-  allowedTools: z.array(z.string()).optional(),
-  disallowedTools: z.array(z.string()).optional(),
-  mcpConfig: z.string().optional(),
-  permissionPromptTool: z.string().optional(),
-  input: z.any().optional(), // Processed separately as it can be various formats
-  output: z.any().optional(), // Processed separately as it can be various formats
-}).strict(); // Disallow unknown keys
+export const FrontmatterSchema = z
+  .object({
+    systemPrompt: z.string().optional(),
+    appendSystemPrompt: z.string().optional(),
+    allowedTools: z.array(z.string()).optional(),
+    disallowedTools: z.array(z.string()).optional(),
+    mcpConfig: z.string().optional(),
+    permissionPromptTool: z.string().optional(),
+    input: z.any().optional(), // Processed separately as it can be various formats
+    output: z.any().optional(), // Processed separately as it can be various formats
+  })
+  .strict(); // Disallow unknown keys
 
 export type Frontmatter = z.infer<typeof FrontmatterSchema>;
 

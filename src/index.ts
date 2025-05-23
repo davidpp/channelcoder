@@ -5,8 +5,8 @@
  */
 
 import { CC } from './cc.js';
+import { type Frontmatter, FrontmatterSchema } from './loader.js';
 import type { CCOptions, CCResult, PromptConfig } from './types.js';
-import { FrontmatterSchema, type Frontmatter } from './loader.js';
 
 // Default instance for convenience
 export const cc = new CC();

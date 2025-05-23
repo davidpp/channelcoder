@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { parseArgs } from 'util';
 import { cc } from './index.js';
-import type { InterpolationData, RunOptions, CCOptions } from './types.js';
+import type { CCOptions, InterpolationData, RunOptions } from './types.js';
 
 /**
  * CC CLI - Command line interface for CC SDK
@@ -198,7 +198,7 @@ async function main() {
       options.continue = true;
     }
     if (values['max-turns']) {
-      options.maxTurns = parseInt(values['max-turns'], 10);
+      options.maxTurns = Number.parseInt(values['max-turns'], 10);
     }
 
     if (values.verbose) {

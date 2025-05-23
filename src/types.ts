@@ -51,9 +51,9 @@ export interface CCOptions {
   outputFormat?: 'json' | 'stream-json' | 'text';
 
   // Conversation options
-  resume?: string;        // Resume by session ID
-  continue?: boolean;     // Continue most recent conversation
-  maxTurns?: number;      // Limit agentic turns in non-interactive mode
+  resume?: string; // Resume by session ID
+  continue?: boolean; // Continue most recent conversation
+  maxTurns?: number; // Limit agentic turns in non-interactive mode
 }
 
 /**

@@ -1,6 +1,6 @@
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, rmdirSync, unlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { z } from 'zod';
 import { cc } from '../src/index';
 
@@ -33,9 +33,11 @@ describe('CC Integration Tests', () => {
   });
 
   describe('file-based prompts', () => {
-    test('should load real file and interpolate variables', async () => {
-      // Create test prompt file
-      const promptContent = `---
+    test(
+      'should load real file and interpolate variables',
+      async () => {
+        // Create test prompt file
+        const promptContent = `---
 input:
   title: string
   items: string[]
@@ -63,48 +65,58 @@ Return a JSON response with:
 }
 \`\`\``;
 
-      writeFileSync(promptFile, promptContent);
+        writeFileSync(promptFile, promptContent);
 
-      // This would normally call Claude, but in tests it will fail
-      // We're testing the file loading, validation, and interpolation
-      try {
+        // This would normally call Claude, but in tests it will fail
+        // We're testing the file loading, validation, and interpolation
+        try {
+          const result = await cc.fromFile(promptFile, {
+            title: 'Process List',
+            items: ['apple', 'banana', 'orange'],
+            showDetails: true,
+          });
+
+          // In real scenario, this would succeed with Claude installed
+          // For now, we expect it to fail at the spawn step
+          expect(result.success).toBe(false);
+        } catch (error) {
+          // Expected in test environment without Claude CLI
+          expect(error).toBeDefined();
+        }
+      },
+      { timeout: 10000 }
+    );
+
+    test(
+      'should validate input schema from file',
+      async () => {
         const result = await cc.fromFile(promptFile, {
-          title: 'Process List',
-          items: ['apple', 'banana', 'orange'],
-          showDetails: true,
+          // Missing required 'title' field
+          items: ['test'],
         });
 
-        // In real scenario, this would succeed with Claude installed
-        // For now, we expect it to fail at the spawn step
         expect(result.success).toBe(false);
-      } catch (error) {
-        // Expected in test environment without Claude CLI
-        expect(error).toBeDefined();
-      }
-    }, { timeout: 10000 });
+        expect(result.error).toContain('Input validation failed');
+        expect(result.error).toContain('title');
+      },
+      { timeout: 10000 }
+    );
 
-    test('should validate input schema from file', async () => {
-      const result = await cc.fromFile(promptFile, {
-        // Missing required 'title' field
-        items: ['test'],
-      });
+    test(
+      'should handle optional fields correctly',
+      async () => {
+        const result = await cc.fromFile(promptFile, {
+          title: 'Test',
+          items: ['a', 'b'],
+          // showDetails is optional, should work without it
+        });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Input validation failed');
-      expect(result.error).toContain('title');
-    }, { timeout: 10000 });
-
-    test('should handle optional fields correctly', async () => {
-      const result = await cc.fromFile(promptFile, {
-        title: 'Test',
-        items: ['a', 'b'],
-        // showDetails is optional, should work without it
-      });
-
-      // Would succeed with Claude installed
-      // We're mainly testing that validation passes
-      expect(result.error).not.toContain('Input validation failed');
-    }, { timeout: 10000 });
+        // Would succeed with Claude installed
+        // We're mainly testing that validation passes
+        expect(result.error).not.toContain('Input validation failed');
+      },
+      { timeout: 10000 }
+    );
   });
 
   describe('schema validation', () => {
@@ -205,23 +217,31 @@ Return a JSON response with:
   });
 
   describe('error handling', () => {
-    test('should handle non-existent prompt files gracefully', async () => {
-      const result = await cc.fromFile('/non/existent/file.md', {});
+    test(
+      'should handle non-existent prompt files gracefully',
+      async () => {
+        const result = await cc.fromFile('/non/existent/file.md', {});
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Failed to load prompt file');
-    }, { timeout: 10000 });
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('Failed to load prompt file');
+      },
+      { timeout: 10000 }
+    );
 
-    test('should handle malformed prompt files', async () => {
-      const malformedFile = join(testDir, 'malformed.md');
-      writeFileSync(malformedFile, '---\ninvalid yaml: [\n---\nContent');
+    test(
+      'should handle malformed prompt files',
+      async () => {
+        const malformedFile = join(testDir, 'malformed.md');
+        writeFileSync(malformedFile, '---\ninvalid yaml: [\n---\nContent');
 
-      const result = await cc.fromFile(malformedFile, {});
+        const result = await cc.fromFile(malformedFile, {});
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
+        expect(result.success).toBe(false);
+        expect(result.error).toBeDefined();
 
-      unlinkSync(malformedFile);
-    }, { timeout: 10000 });
+        unlinkSync(malformedFile);
+      },
+      { timeout: 10000 }
+    );
   });
 });

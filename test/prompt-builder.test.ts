@@ -1,4 +1,4 @@
-import { describe, expect, test, mock, beforeEach } from 'bun:test';
+import { beforeEach, describe, expect, mock, test } from 'bun:test';
 import { z } from 'zod';
 import type { CC } from '../src/cc';
 import { PromptBuilder } from '../src/prompt-builder';
