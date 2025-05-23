@@ -152,3 +152,6 @@ local/
 # Generated files
 *.generated.*
 generated/
+
+# Release folder
+.release/

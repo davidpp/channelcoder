@@ -1,9 +1,0 @@
-{
-  "current_version": "0.0.1",
-  "new_version": "0.1.0",
-  "bump_type": "minor",
-  "confidence": "high",
-  "reasoning": "Initial stable release with core SDK features, Zod validation, Bun test migration, and critical path resolution fixes",
-  "breaking_changes": false,
-  "notable_features": ["Zod schema validation", "Bun test runner migration", "Path resolution fixes", "Claude CLI integration improvements"]
-}
