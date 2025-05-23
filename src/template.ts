@@ -7,48 +7,59 @@ export class PromptTemplate {
   /**
    * Interpolate variables in a template string
    * Supports:
-   * - ${variable} - simple variable replacement
-   * - ${obj.prop} - nested property access
-   * - ${cond ? yes : no} - ternary expressions
-   * - \${escaped} - escaped syntax
+   * - {variable} - simple variable replacement
+   * - {obj.prop} - nested property access
+   * - {cond ? yes : no} - ternary expressions
+   * - \{escaped} - escaped syntax
+   * Also supports ${variable} syntax for backward compatibility
    */
   interpolate(template: string, data: InterpolationData): string {
-    // First, handle escaped syntax
-    const escaped = template.replace(/\\\$/g, '\u0000');
+    // First, handle escaped syntax - preserve the entire escaped sequence
+    let escaped = template.replace(/\\\$\{/g, '\u0000');
+    escaped = escaped.replace(/\\\{/g, '\u0001');
 
-    // Replace ${expression} with evaluated results
-    const interpolated = escaped.replace(/\$\{([^}]+)\}/g, (match, expression) => {
-      try {
-        // Check if it's a simple variable
-        const trimmed = expression.trim();
-
-        // Direct variable access
-        if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)) {
-          return this.formatValue(data[trimmed]);
-        }
-
-        // Property access (e.g., obj.prop)
-        if (/^[a-zA-Z_][a-zA-Z0-9_.]*$/.test(trimmed)) {
-          const value = this.getNestedValue(data, trimmed);
-          return this.formatValue(value);
-        }
-
-        // Ternary expression (simple)
-        if (trimmed.includes('?') && trimmed.includes(':')) {
-          return this.evaluateTernary(trimmed, data);
-        }
-
-        // Fallback: return original if can't evaluate
-        return match;
-      } catch (_error) {
-        // On error, return original expression
-        return match;
-      }
+    // Replace {expression} with evaluated results (but not ${expression})
+    let interpolated = escaped.replace(/(?<!\$)\{([^}]+)\}/g, (match, expression) => {
+      return this.processExpression(expression, data, match);
+    });
+    
+    // Also handle ${expression} for backward compatibility
+    interpolated = interpolated.replace(/\$\{([^}]+)\}/g, (match, expression) => {
+      return this.processExpression(expression, data, match);
     });
 
-    // Restore escaped $ symbols
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: Using null character as placeholder
-    return interpolated.replace(/\u0000/g, '$');
+    // Restore escaped symbols
+    interpolated = interpolated.replace(/\u0000/g, '${');
+    return interpolated.replace(/\u0001/g, '{');
+  }
+  
+  private processExpression(expression: string, data: InterpolationData, originalMatch: string): string {
+    try {
+      // Check if it's a simple variable
+      const trimmed = expression.trim();
+
+      // Direct variable access
+      if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)) {
+        return this.formatValue(data[trimmed]);
+      }
+
+      // Property access (e.g., obj.prop)
+      if (/^[a-zA-Z_][a-zA-Z0-9_.]*$/.test(trimmed)) {
+        const value = this.getNestedValue(data, trimmed);
+        return this.formatValue(value);
+      }
+
+      // Ternary expression (simple)
+      if (trimmed.includes('?') && trimmed.includes(':')) {
+        return this.evaluateTernary(trimmed, data);
+      }
+
+      // Fallback: return original if can't evaluate
+      return originalMatch;
+    } catch (_error) {
+      // On error, return original expression
+      return originalMatch;
+    }
   }
 
   /**

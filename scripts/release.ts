@@ -112,6 +112,11 @@ async function runPreflightChecks(): Promise<boolean> {
       command: ['bun', 'test'],
       required: true,
     },
+    {
+      name: 'CLI Smoke Tests',
+      command: ['bun', 'run', 'test:smoke'],
+      required: true,
+    },
   ];
 
   let allPassed = true;

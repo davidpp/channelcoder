@@ -2,7 +2,7 @@
 id = "BUG-FIXCLI-0523-JW"
 title = "Fix CLI installation issues"
 type = "🐞 Bug"
-status = "🔵 In Progress"
+status = "🟢 Done"
 priority = "🔼 High"
 created_date = "2025-05-23"
 updated_date = "2025-05-23"
