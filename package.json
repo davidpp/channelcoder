@@ -1,6 +1,6 @@
 {
   "name": "channelcoder",
-  "version": "1.0.0",
+  "version": "0.6.0",
   "description": "A streamlined SDK and CLI for Claude Code - Channel your prompts to Claude",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",

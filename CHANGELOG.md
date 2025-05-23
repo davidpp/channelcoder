@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [0.6.0] - 2024-12-19
+
+### Added
+- **Node.js Compatibility**: ChannelCoder now runs on both Node.js and Bun runtimes, expanding usage to more environments
+- **Dual Runtime Support**: Users can now choose between Node.js or Bun based on their project requirements
+
 ## [1.0.0] - 2024-12-28
 
 ### Added
