@@ -2,15 +2,15 @@
 
 /**
  * Example: Automated Release Analysis Script
- * 
+ *
  * This script demonstrates how to use ChannelCoder for automating
  * release version analysis by passing multiple variables to a prompt.
  */
 
-import { cc } from 'channelcoder';
-import { z } from 'zod';
 import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
+import { cc } from 'channelcoder';
+import { z } from 'zod';
 
 // Define the expected output schema
 const ReleaseAnalysisSchema = z.object({
@@ -20,7 +20,7 @@ const ReleaseAnalysisSchema = z.object({
   confidence: z.enum(['high', 'medium', 'low']),
   reasoning: z.string(),
   breakingChanges: z.boolean(),
-  highlights: z.array(z.string())
+  highlights: z.array(z.string()),
 });
 
 /**
@@ -43,10 +43,9 @@ function getLastTag(): string {
  */
 function getCommitsSince(tag: string): string {
   try {
-    const commits = execSync(
-      `git log --oneline ${tag}..HEAD --pretty=format:"%h %s"`,
-      { encoding: 'utf-8' }
-    );
+    const commits = execSync(`git log --oneline ${tag}..HEAD --pretty=format:"%h %s"`, {
+      encoding: 'utf-8',
+    });
     return commits || 'No commits since last release';
   } catch {
     return 'Unable to fetch commits';
@@ -58,10 +57,7 @@ function getCommitsSince(tag: string): string {
  */
 function getFileChanges(tag: string): string {
   try {
-    const changes = execSync(
-      `git diff ${tag}..HEAD --stat`,
-      { encoding: 'utf-8' }
-    );
+    const changes = execSync(`git diff ${tag}..HEAD --stat`, { encoding: 'utf-8' });
     return changes || 'No file changes';
   } catch {
     return 'Unable to fetch file changes';
@@ -96,14 +92,14 @@ async function main() {
   try {
     // Method 1: Using file-based prompt with validation
     console.log('🔍 Running release analysis...\n');
-    
+
     const result = await cc.fromFile('examples/release-analysis.md', {
       currentVersion,
       lastTag,
       commits,
       fileChanges,
       // Optional: provide a target version to validate
-      targetVersion: process.argv[2]
+      targetVersion: process.argv[2],
     });
 
     if (!result.success) {
@@ -126,15 +122,15 @@ async function main() {
     console.log(`🎯 Confidence: ${analysis.confidence.toUpperCase()}`);
     console.log(`💥 Breaking Changes: ${analysis.breakingChanges ? 'YES ⚠️' : 'No'}`);
     console.log(`\n💡 Reasoning: ${analysis.reasoning}`);
-    
+
     if (analysis.highlights.length > 0) {
       console.log('\n🌟 Highlights:');
-      analysis.highlights.forEach(h => console.log(`   - ${h}`));
+      analysis.highlights.forEach((h) => console.log(`   - ${h}`));
     }
 
     // Method 2: Alternative using inline prompt (for demonstration)
     console.log('\n\n--- Alternative: Using inline prompt ---\n');
-    
+
     const inlineResult = await cc.prompt`
       Analyze these commits for version bump:
       Current: ${currentVersion}
@@ -148,7 +144,6 @@ async function main() {
     if (inlineResult.success && inlineResult.stdout) {
       console.log(`Quick suggestion: ${inlineResult.stdout.trim()}`);
     }
-
   } catch (error) {
     console.error('❌ Error:', error);
     process.exit(1);

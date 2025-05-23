@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { cc } from '../src/index.js';
 import { z } from 'zod';
+import { cc } from '../src/index.js';
 
 /**
  * Example: Basic usage of CC SDK
@@ -10,7 +10,7 @@ import { z } from 'zod';
 // 1. Simple inline prompt
 async function example1() {
   console.log('Example 1: Simple inline prompt');
-  
+
   const task = 'FEAT-123';
   const result = await cc.prompt`
     What is the status of task ${task}?
@@ -25,9 +25,9 @@ async function example1() {
 // 2. Prompt with system prompt and tools
 async function example2() {
   console.log('\nExample 2: With system prompt and tools');
-  
+
   const commits = ['fix: bug in parser', 'feat: add new API'];
-  
+
   const result = await cc.prompt`
     Summarize these commits: ${commits}
   `
@@ -41,15 +41,15 @@ async function example2() {
 // 3. With output schema validation
 async function example3() {
   console.log('\nExample 3: With schema validation');
-  
+
   const AnalysisSchema = z.object({
     summary: z.string(),
     category: z.enum(['feature', 'bugfix', 'other']),
-    impact: z.number().min(1).max(10)
+    impact: z.number().min(1).max(10),
   });
 
   const code = 'function add(a, b) { return a + b; }';
-  
+
   const result = await cc.prompt`
     Analyze this code and return JSON:
     \`\`\`javascript
@@ -79,13 +79,11 @@ async function example3() {
 // 4. Streaming example
 async function example4() {
   console.log('\nExample 4: Streaming response');
-  
+
   const topic = 'TypeScript best practices';
-  
+
   console.log('Streaming response:');
-  for await (const chunk of cc.stream(
-    cc.prompt`Tell me about ${topic} in 3 bullet points`
-  )) {
+  for await (const chunk of cc.stream(cc.prompt`Tell me about ${topic} in 3 bullet points`)) {
     if (chunk.type === 'content') {
       process.stdout.write(chunk.content);
     }
@@ -96,7 +94,7 @@ async function example4() {
 // Run examples
 async function main() {
   console.log('CC SDK Examples\n');
-  
+
   try {
     await example1();
     await example2();

@@ -2,7 +2,7 @@
 
 /**
  * Quick Start Examples for ChannelCoder
- * 
+ *
  * Simple examples to get you started with the SDK
  */
 
@@ -11,10 +11,10 @@ import { z } from 'zod';
 
 async function example1_basicPrompt() {
   console.log('=== Example 1: Basic Prompt ===\n');
-  
+
   const name = 'Alice';
   const task = 'explain quantum computing';
-  
+
   const result = await cc.prompt`
     Hi ${name}! Please ${task} in simple terms.
   `.run();
@@ -26,9 +26,9 @@ async function example1_basicPrompt() {
 
 async function example2_withTools() {
   console.log('\n=== Example 2: With Tools ===\n');
-  
+
   const pattern = 'TODO';
-  
+
   const result = await cc.prompt`
     Find all files containing "${pattern}" in the current directory.
     List just the filenames.
@@ -43,10 +43,10 @@ async function example2_withTools() {
 
 async function example3_fileBasedPrompt() {
   console.log('\n=== Example 3: File-based Prompt ===\n');
-  
+
   const result = await cc.fromFile('examples/simple-greeting.md', {
     name: 'Developer',
-    greeting: 'Howdy'
+    greeting: 'Howdy',
   });
 
   if (result.success) {
@@ -56,12 +56,12 @@ async function example3_fileBasedPrompt() {
 
 async function example4_withValidation() {
   console.log('\n=== Example 4: With Schema Validation ===\n');
-  
+
   // Define expected output
   const AnalysisSchema = z.object({
     language: z.string(),
     purpose: z.string(),
-    complexity: z.enum(['simple', 'moderate', 'complex'])
+    complexity: z.enum(['simple', 'moderate', 'complex']),
   });
 
   const code = `
@@ -97,9 +97,9 @@ async function example4_withValidation() {
 
 async function example5_streaming() {
   console.log('\n=== Example 5: Streaming ===\n');
-  
+
   console.log('Story: ');
-  
+
   const prompt = cc.prompt`
     Tell a very short story (2-3 sentences) about a programmer
     learning a new tool called ChannelCoder.
@@ -116,14 +116,14 @@ async function example5_streaming() {
 // Run all examples
 async function main() {
   console.log('🚀 ChannelCoder Quick Start Examples\n');
-  
+
   try {
     await example1_basicPrompt();
     await example2_withTools();
     await example3_fileBasedPrompt();
     await example4_withValidation();
     await example5_streaming();
-    
+
     console.log('\n✅ All examples completed!');
     console.log('\n📚 See examples/README.md for more details');
   } catch (error) {

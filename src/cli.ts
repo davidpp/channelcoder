@@ -1,17 +1,18 @@
 #!/usr/bin/env bun
 
-import { parseArgs } from 'util';
-import { cc } from './index.js';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { parseArgs } from 'util';
+import { cc } from './index.js';
+import type { InterpolationData, RunOptions } from './types.js';
 
 /**
  * CC CLI - Command line interface for CC SDK
- * 
+ *
  * Usage:
  *   cc <prompt-file> [options]
  *   cc -p "inline prompt" [options]
- *   
+ *
  * Options:
  *   -p, --prompt         Inline prompt instead of file
  *   -d, --data          Data for interpolation (key=value pairs)
@@ -57,15 +58,15 @@ Examples:
 `);
 }
 
-async function parseData(dataArgs: string[]): Promise<Record<string, any>> {
-  const data: Record<string, any> = {};
-  
+async function parseData(dataArgs: string[]): Promise<InterpolationData> {
+  const data: InterpolationData = {};
+
   for (const arg of dataArgs) {
     const [key, ...valueParts] = arg.split('=');
     const value = valueParts.join('='); // Handle values with = in them
-    
+
     if (!key) continue;
-    
+
     // Try to parse as JSON first
     try {
       data[key] = JSON.parse(value);
@@ -76,12 +77,12 @@ async function parseData(dataArgs: string[]): Promise<Record<string, any>> {
       else if (value === 'false') data[key] = false;
       else if (value === 'null') data[key] = null;
       else if (value === 'undefined') data[key] = undefined;
-      else if (/^-?\d+$/.test(value)) data[key] = parseInt(value, 10);
-      else if (/^-?\d+\.\d+$/.test(value)) data[key] = parseFloat(value);
+      else if (/^-?\d+$/.test(value)) data[key] = Number.parseInt(value, 10);
+      else if (/^-?\d+\.\d+$/.test(value)) data[key] = Number.parseFloat(value);
       else data[key] = value;
     }
   }
-  
+
   return data;
 }
 
@@ -105,9 +106,9 @@ async function main() {
       stream: { type: 'boolean' },
       verbose: { type: 'boolean', short: 'v' },
       json: { type: 'boolean' },
-      help: { type: 'boolean', short: 'h' }
+      help: { type: 'boolean', short: 'h' },
     },
-    allowPositionals: true
+    allowPositionals: true,
   });
 
   // Show help
@@ -118,8 +119,8 @@ async function main() {
 
   try {
     // Parse data
-    let data: Record<string, any> = {};
-    
+    let data: InterpolationData = {};
+
     if (values['data-stdin']) {
       // Read JSON data from stdin
       const stdinData = await readStdin();
@@ -130,7 +131,7 @@ async function main() {
         process.exit(1);
       }
     }
-    
+
     if (values.data) {
       // Merge command line data
       const cliData = await parseData(values.data);
@@ -138,22 +139,22 @@ async function main() {
     }
 
     // Build options
-    const options: any = {};
-    
+    const options: Partial<RunOptions> = {};
+
     if (values.system) {
       options.systemPrompt = values.system;
     }
-    
+
     if (values.tools) {
       // Handle both comma and space separated tools
       // If contains comma, split by comma; otherwise split by space
       if (values.tools.includes(',')) {
-        options.allowedTools = values.tools.split(',').map(t => t.trim());
+        options.allowedTools = values.tools.split(',').map((t) => t.trim());
       } else {
-        options.allowedTools = values.tools.split(/\s+/).filter(t => t);
+        options.allowedTools = values.tools.split(/\s+/).filter((t) => t);
       }
     }
-    
+
     if (values.verbose) {
       console.log('📊 Configuration:');
       console.log('  Data:', JSON.stringify(data, null, 2));
@@ -164,8 +165,8 @@ async function main() {
     // Execute prompt
     if (values.stream) {
       // Streaming mode
-      let prompt: any;
-      
+      let prompt: string;
+
       if (values.prompt) {
         // Inline prompt - need to interpolate manually
         const template = new (await import('./template.js')).PromptTemplate();
@@ -177,21 +178,21 @@ async function main() {
         if (values.verbose) {
           console.log(`📄 Loading prompt from: ${promptFile}`);
         }
-        
+
         // For streaming with file, we need to handle this differently
         // Load the file, get config, then stream
         const { loadPromptFile } = await import('./loader.js');
         const { config, content } = await loadPromptFile(promptFile);
         const template = new (await import('./template.js')).PromptTemplate();
         const interpolated = template.interpolate(content, data);
-        
+
         // Merge file config with CLI options
         Object.assign(options, config, options); // CLI options override file config
         prompt = interpolated;
       }
 
       console.log('🔄 Streaming response...\n');
-      
+
       for await (const chunk of cc.stream(prompt, options)) {
         if (chunk.type === 'content') {
           process.stdout.write(chunk.content);
@@ -202,20 +203,19 @@ async function main() {
         }
       }
       console.log('\n');
-      
     } else {
       // Normal execution
-      let result;
-      
+      let result: Awaited<ReturnType<typeof cc.run>>;
+
       if (values.prompt) {
         // Inline prompt
         const template = new (await import('./template.js')).PromptTemplate();
         const interpolated = template.interpolate(values.prompt, data);
-        
+
         if (values.verbose) {
           console.log('📝 Executing inline prompt');
         }
-        
+
         result = await cc.run(interpolated, options);
       } else {
         // File-based prompt
@@ -223,7 +223,7 @@ async function main() {
         if (values.verbose) {
           console.log(`📄 Loading prompt from: ${promptFile}`);
         }
-        
+
         result = await cc.fromFile(promptFile, data);
       }
 
@@ -245,10 +245,12 @@ async function main() {
           }
           console.log(result.stdout);
         }
-        
+
         if (result.warnings && result.warnings.length > 0 && values.verbose) {
           console.log('\n⚠️  Warnings:');
-          result.warnings.forEach(w => console.log(`  - ${w}`));
+          for (const w of result.warnings) {
+            console.log(`  - ${w}`);
+          }
         }
       } else {
         console.error('❌ Error:', result.error);
@@ -258,7 +260,6 @@ async function main() {
         process.exit(1);
       }
     }
-
   } catch (error) {
     console.error('❌ Fatal error:', error);
     process.exit(1);

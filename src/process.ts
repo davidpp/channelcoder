@@ -1,5 +1,5 @@
-import type { CCOptions, CCResult, PromptConfig, StreamChunk } from './types.js';
 import { resolveSystemPrompt } from './loader.js';
+import type { CCOptions, CCResult, PromptConfig, StreamChunk } from './types.js';
 
 /**
  * Process manager for Claude Code CLI execution
@@ -12,12 +12,12 @@ export class CCProcess {
    */
   async execute(prompt: string, options: CCOptions & PromptConfig): Promise<CCResult> {
     const cmd = await this.buildCommand(options);
-    
+
     try {
       const proc = Bun.spawn(cmd, {
         stdin: 'pipe',
         stdout: 'pipe',
-        stderr: 'pipe'
+        stderr: 'pipe',
       });
 
       // Write prompt to stdin
@@ -45,7 +45,7 @@ export class CCProcess {
             if (done) break;
             stdout += decoder.decode(value);
           }
-        } catch (error) {
+        } catch (_error) {
           // Ignore read errors
         }
       }
@@ -61,13 +61,13 @@ export class CCProcess {
             if (done) break;
             stderr += decoder.decode(value);
           }
-        } catch (error) {
+        } catch (_error) {
           // Ignore read errors
         }
       }
 
       const exitCode = await proc.exited;
-      
+
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
@@ -82,7 +82,7 @@ export class CCProcess {
       const result: CCResult = {
         success: exitCode === 0,
         stdout,
-        stderr
+        stderr,
       };
 
       if (exitCode !== 0) {
@@ -103,7 +103,7 @@ export class CCProcess {
     } catch (error) {
       return {
         success: false,
-        error: `Process execution failed: ${error}`
+        error: `Process execution failed: ${error}`,
       };
     }
   }
@@ -114,14 +114,14 @@ export class CCProcess {
   async *stream(prompt: string, options: CCOptions & PromptConfig): AsyncIterable<StreamChunk> {
     const cmd = await this.buildCommand({
       ...options,
-      outputFormat: 'stream-json'
+      outputFormat: 'stream-json',
     });
 
     try {
       const proc = Bun.spawn(cmd, {
         stdin: 'pipe',
         stdout: 'pipe',
-        stderr: 'pipe'
+        stderr: 'pipe',
       });
 
       // Write prompt to stdin
@@ -148,9 +148,9 @@ export class CCProcess {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            
+
             buffer += decoder.decode(value, { stream: true });
-            
+
             // Process complete lines
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
@@ -170,7 +170,7 @@ export class CCProcess {
           yield {
             type: 'error',
             content: `Stream error: ${error}`,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           };
         }
       }
@@ -185,14 +185,14 @@ export class CCProcess {
         yield {
           type: 'error',
           content: `Process exited with code ${exitCode}`,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
       }
     } catch (error) {
       yield {
         type: 'error',
         content: `Stream execution failed: ${error}`,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
     }
   }
@@ -234,13 +234,13 @@ export class CCProcess {
   /**
    * Parse JSON from output
    */
-  private parseOutput(output: string): any | null {
+  private parseOutput(output: string): unknown | null {
     // Try to extract JSON from code blocks
     const jsonMatch = output.match(/```json\n([\s\S]*?)\n```/);
     if (jsonMatch) {
       try {
         return JSON.parse(jsonMatch[1]);
-      } catch (e) {
+      } catch (_e) {
         return null;
       }
     }
@@ -248,7 +248,7 @@ export class CCProcess {
     // Try to parse entire output as JSON
     try {
       return JSON.parse(output);
-    } catch (e) {
+    } catch (_e) {
       return null;
     }
   }
@@ -259,18 +259,20 @@ export class CCProcess {
   private parseStreamLine(line: string): StreamChunk {
     try {
       const data = JSON.parse(line);
-      
+
       // Handle different event types from Claude's stream-json format
       if (data.type === 'assistant' && data.message?.content) {
         // Extract text from assistant messages
         const content = data.message.content;
         if (Array.isArray(content)) {
-          const textContent = content.find((c: any) => c.type === 'text');
-          if (textContent?.text) {
+          const textContent = content.find(
+            (c: unknown) => (c as { type?: string }).type === 'text'
+          );
+          if ((textContent as { text?: string })?.text) {
             return {
               type: 'content',
-              content: textContent.text,
-              timestamp: Date.now()
+              content: (textContent as { text: string }).text,
+              timestamp: Date.now(),
             };
           }
         }
@@ -278,49 +280,49 @@ export class CCProcess {
         return {
           type: 'content',
           content: data.text || '',
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
       } else if (data.type === 'tool_use') {
         return {
           type: 'tool_use',
           content: JSON.stringify(data),
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
       } else if (data.type === 'tool_result') {
         return {
           type: 'tool_result',
           content: JSON.stringify(data),
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
       } else if (data.error) {
         return {
           type: 'error',
           content: data.error,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
       }
-      
+
       // Ignore system and result messages in streaming
       if (data.type === 'system' || data.type === 'result') {
         return {
           type: 'content',
           content: '',
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
       }
-      
+
       // Default: treat as content
       return {
         type: 'content',
         content: line,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
-    } catch (e) {
+    } catch (_e) {
       // If not JSON, treat as plain content
       return {
         type: 'content',
         content: line,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
     }
   }

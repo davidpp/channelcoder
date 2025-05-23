@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { PromptTemplate } from '../src/template';
 
 describe('PromptTemplate', () => {
@@ -11,10 +11,10 @@ describe('PromptTemplate', () => {
     });
 
     it('should handle multiple variables', () => {
-      const result = template.interpolate(
-        'Task ${id} is ${status}',
-        { id: 'FEAT-123', status: 'done' }
-      );
+      const result = template.interpolate('Task ${id} is ${status}', {
+        id: 'FEAT-123',
+        status: 'done',
+      });
       expect(result).toBe('Task FEAT-123 is done');
     });
 
@@ -32,7 +32,7 @@ describe('PromptTemplate', () => {
   describe('nested properties', () => {
     it('should access nested properties', () => {
       const data = {
-        user: { name: 'Alice', role: 'admin' }
+        user: { name: 'Alice', role: 'admin' },
       };
       const result = template.interpolate('User ${user.name} is ${user.role}', data);
       expect(result).toBe('User Alice is admin');
@@ -46,34 +46,28 @@ describe('PromptTemplate', () => {
 
   describe('conditional expressions', () => {
     it('should handle simple ternary', () => {
-      const result = template.interpolate(
-        '${hasAccess ? "Welcome" : "Access Denied"}',
-        { hasAccess: true }
-      );
+      const result = template.interpolate('${hasAccess ? "Welcome" : "Access Denied"}', {
+        hasAccess: true,
+      });
       expect(result).toBe('Welcome');
     });
 
     it('should handle false condition', () => {
-      const result = template.interpolate(
-        '${isAdmin ? "Admin Panel" : "User Dashboard"}',
-        { isAdmin: false }
-      );
+      const result = template.interpolate('${isAdmin ? "Admin Panel" : "User Dashboard"}', {
+        isAdmin: false,
+      });
       expect(result).toBe('User Dashboard');
     });
 
     it('should handle variable references in ternary', () => {
-      const result = template.interpolate(
-        '${count ? count : "none"}',
-        { count: 5 }
-      );
+      const result = template.interpolate('${count ? count : "none"}', { count: 5 });
       expect(result).toBe('5');
     });
 
     it('should handle negation', () => {
-      const result = template.interpolate(
-        '${!isDisabled ? "Enabled" : "Disabled"}',
-        { isDisabled: false }
-      );
+      const result = template.interpolate('${!isDisabled ? "Enabled" : "Disabled"}', {
+        isDisabled: false,
+      });
       expect(result).toBe('Enabled');
     });
   });
@@ -100,30 +94,23 @@ describe('PromptTemplate', () => {
     });
 
     it('should handle mixed escaped and unescaped', () => {
-      const result = template.interpolate(
-        'Code: \\${var} Value: ${var}',
-        { var: 'test' }
-      );
+      const result = template.interpolate('Code: \\${var} Value: ${var}', { var: 'test' });
       expect(result).toBe('Code: ${var} Value: test');
     });
   });
 
   describe('complex expressions', () => {
     it('should handle comparisons in ternary', () => {
-      const result = template.interpolate(
-        '${count > 5 ? "Many" : "Few"}',
-        { count: 10 }
-      );
-      // Note: Current implementation doesn't support > operator, 
+      const result = template.interpolate('${count > 5 ? "Many" : "Few"}', { count: 10 });
+      // Note: Current implementation doesn't support > operator,
       // so it treats 'count > 5' as a falsy expression
       expect(result).toBe('Few');
     });
 
     it('should handle equality checks', () => {
-      const result = template.interpolate(
-        '${status === "active" ? "Running" : "Stopped"}',
-        { status: 'active' }
-      );
+      const result = template.interpolate('${status === "active" ? "Running" : "Stopped"}', {
+        status: 'active',
+      });
       expect(result).toBe('Running');
     });
   });

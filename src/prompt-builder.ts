@@ -1,16 +1,16 @@
+import type { z } from 'zod';
 import type { CC } from './cc.js';
-import type { CCResult, PromptConfig, StreamChunk } from './types.js';
-import { z } from 'zod';
+import type { CCResult, InterpolationValue, PromptConfig, StreamChunk } from './types.js';
 
 /**
  * Fluent builder for prompts created with cc.prompt``
  */
 export class PromptBuilder {
   private config: PromptConfig = {};
-  
+
   constructor(
     private template: string,
-    private values: any[],
+    private values: InterpolationValue[],
     private cc: CC
   ) {}
 
@@ -59,7 +59,7 @@ export class PromptBuilder {
   private buildPrompt(): string {
     let result = this.template;
     this.values.forEach((value, index) => {
-      const placeholder = '${' + index + '}';
+      const placeholder = `\${${index}}`;
       const replacement = this.formatValue(value);
       result = result.replace(placeholder, replacement);
     });
@@ -69,7 +69,7 @@ export class PromptBuilder {
   /**
    * Format a value for interpolation
    */
-  private formatValue(value: any): string {
+  private formatValue(value: InterpolationValue): string {
     if (value === null || value === undefined) {
       return '';
     }

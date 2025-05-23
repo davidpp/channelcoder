@@ -14,7 +14,7 @@ async function main() {
     const result = await cc.fromFile('examples/analyze-task.md', {
       taskId: 'FEAT-AUTH-001',
       context: 'Implement user authentication with JWT tokens and refresh token support',
-      includeDetails: true
+      includeDetails: true,
     });
 
     console.log('Execution result:', result.success);
@@ -38,13 +38,12 @@ async function main() {
     console.log('\n\nTesting validation...');
     const invalidResult = await cc.fromFile('examples/analyze-task.md', {
       // Missing required 'taskId' field
-      context: 'Some context'
+      context: 'Some context',
     });
 
     if (!invalidResult.success) {
       console.log('Validation failed as expected:', invalidResult.error);
     }
-
   } catch (error) {
     console.error('Fatal error:', error);
   }

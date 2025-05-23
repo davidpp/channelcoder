@@ -1,11 +1,11 @@
-import { z } from 'zod';
+import type { z } from 'zod';
 
 /**
  * Result from CC (Claude Code) execution
  */
-export interface CCResult {
+export interface CCResult<T = unknown> {
   success: boolean;
-  data?: any;
+  data?: T;
   error?: string;
   stdout?: string;
   stderr?: string;
@@ -18,13 +18,13 @@ export interface CCResult {
 export interface PromptConfig {
   // Input schema for validation
   input?: z.ZodSchema | Record<string, z.ZodType>;
-  
+
   // Output schema for parsing
-  output?: z.ZodSchema;
-  
+  output?: z.ZodSchema | Record<string, z.ZodType>;
+
   // System prompt (inline string or file path)
   systemPrompt?: string;
-  
+
   // Claude CLI options
   allowedTools?: string[];
 }
@@ -35,10 +35,10 @@ export interface PromptConfig {
 export interface CCOptions {
   // Default timeout in milliseconds
   timeout?: number;
-  
+
   // Default verbose mode
   verbose?: boolean;
-  
+
   // Default output format
   outputFormat?: 'json' | 'stream-json' | 'text';
 }
@@ -67,3 +67,20 @@ export interface StreamChunk {
   content: string;
   timestamp: number;
 }
+
+/**
+ * Type for interpolation data values
+ */
+export type InterpolationValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | InterpolationValue[]
+  | { [key: string]: InterpolationValue };
+
+/**
+ * Type for interpolation data
+ */
+export type InterpolationData = Record<string, InterpolationValue>;

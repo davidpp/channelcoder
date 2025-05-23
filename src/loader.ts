@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import matter from 'gray-matter';
 import { z } from 'zod';
 import type { PromptConfig } from './types.js';
@@ -6,17 +6,19 @@ import type { PromptConfig } from './types.js';
 /**
  * Load a prompt file with frontmatter
  */
-export async function loadPromptFile(path: string): Promise<{ config: PromptConfig; content: string }> {
+export async function loadPromptFile(
+  path: string
+): Promise<{ config: PromptConfig; content: string }> {
   try {
     const fileContent = readFileSync(path, 'utf-8');
     const parsed = matter(fileContent);
-    
+
     // Convert YAML schema notation to Zod if needed
     const config = await processConfig(parsed.data);
-    
+
     return {
       config,
-      content: parsed.content
+      content: parsed.content,
     };
   } catch (error) {
     throw new Error(`Failed to load prompt file ${path}: ${error}`);
@@ -26,12 +28,14 @@ export async function loadPromptFile(path: string): Promise<{ config: PromptConf
 /**
  * Process configuration from frontmatter
  */
-async function processConfig(data: any): Promise<PromptConfig> {
+async function processConfig(data: Record<string, unknown>): Promise<PromptConfig> {
   const config: PromptConfig = {};
 
   // Copy basic options
-  if (data.systemPrompt !== undefined) config.systemPrompt = data.systemPrompt;
-  if (data.allowedTools !== undefined) config.allowedTools = data.allowedTools;
+  if (data.systemPrompt !== undefined) config.systemPrompt = String(data.systemPrompt);
+  if (data.allowedTools !== undefined && Array.isArray(data.allowedTools)) {
+    config.allowedTools = data.allowedTools.map(String);
+  }
 
   // Process input schema
   if (data.input) {
@@ -49,7 +53,10 @@ async function processConfig(data: any): Promise<PromptConfig> {
 /**
  * Parse schema from YAML notation to Zod
  */
-function parseSchema(schema: any, type: 'input' | 'output'): z.ZodSchema | Record<string, z.ZodType> {
+function parseSchema(
+  schema: unknown,
+  type: 'input' | 'output'
+): z.ZodSchema | Record<string, z.ZodType> {
   // If it's already a Zod schema (shouldn't happen from YAML, but just in case)
   if (schema instanceof z.ZodSchema) {
     return schema;
@@ -58,16 +65,16 @@ function parseSchema(schema: any, type: 'input' | 'output'): z.ZodSchema | Recor
   // If it's a simple object notation, convert to Zod
   if (typeof schema === 'object' && !Array.isArray(schema)) {
     const zodSchema: Record<string, z.ZodType> = {};
-    
-    for (const [key, value] of Object.entries(schema)) {
+
+    for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
       zodSchema[key] = parseFieldType(key, value);
     }
-    
+
     // For output schemas, always return as z.object()
     if (type === 'output') {
       return z.object(zodSchema);
     }
-    
+
     // For input schemas, return as record (will be converted to z.object in validation)
     return zodSchema;
   }
@@ -78,35 +85,36 @@ function parseSchema(schema: any, type: 'input' | 'output'): z.ZodSchema | Recor
 /**
  * Parse individual field type from YAML notation
  */
-function parseFieldType(key: string, value: any): z.ZodType {
+function parseFieldType(key: string, value: unknown): z.ZodType {
   // Handle string type annotations
   if (typeof value === 'string') {
     // Check for optional modifier
     const isOptional = key.endsWith('?');
     const baseType = parseTypeString(value);
-    
+
     return isOptional ? baseType.optional() : baseType;
   }
 
   // Handle object with type property
-  if (typeof value === 'object' && value.type) {
-    const baseType = parseTypeString(value.type);
+  if (typeof value === 'object' && value !== null && 'type' in value) {
+    const schemaConfig = value as Record<string, unknown>;
+    const baseType = parseTypeString(String(schemaConfig.type));
     let schema = baseType;
 
     // Apply modifiers
-    if (value.optional) schema = schema.optional();
-    if (value.nullable) schema = schema.nullable();
-    if (value.default !== undefined) schema = schema.default(value.default);
-    
+    if (schemaConfig.optional) schema = schema.optional();
+    if (schemaConfig.nullable) schema = schema.nullable();
+    if (schemaConfig.default !== undefined) schema = schema.default(schemaConfig.default);
+
     // Apply validators
-    if (value.min !== undefined && schema instanceof z.ZodString) {
-      schema = (schema as z.ZodString).min(value.min);
+    if (schemaConfig.min !== undefined && schema instanceof z.ZodString) {
+      schema = (schema as z.ZodString).min(Number(schemaConfig.min));
     }
-    if (value.max !== undefined && schema instanceof z.ZodString) {
-      schema = (schema as z.ZodString).max(value.max);
+    if (schemaConfig.max !== undefined && schema instanceof z.ZodString) {
+      schema = (schema as z.ZodString).max(Number(schemaConfig.max));
     }
-    if (value.enum && Array.isArray(value.enum)) {
-      schema = z.enum(value.enum as [string, ...string[]]);
+    if (schemaConfig.enum && Array.isArray(schemaConfig.enum)) {
+      schema = z.enum(schemaConfig.enum as [string, ...string[]]);
     }
 
     return schema;
@@ -155,7 +163,7 @@ export async function resolveSystemPrompt(value: string): Promise<string> {
       return readFileSync(value, 'utf-8');
     }
   }
-  
+
   // Otherwise treat as inline content
   return value;
 }

@@ -22,16 +22,26 @@
     "example:release": "bun run examples/release.ts",
     "example:debug": "bun run examples/root-cause-analysis.ts",
     "link:local": "bun link",
-    "unlink:local": "bun unlink"
+    "unlink:local": "bun unlink",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "check": "bun run scripts/code-check.ts",
+    "check:full": "bun run scripts/code-check.ts --full",
+    "check:staged": "bun run scripts/code-check.ts --staged"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@types/bun": "latest",
+    "@types/node": "^22.15.21",
     "@vitest/coverage-v8": "^1.0.0",
     "@vitest/ui": "^1.0.0",
+    "simple-git": "^3.27.0",
     "typescript": "^5.0.0",
     "vitest": "^1.0.0"
   },

@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { cc } from '../src/index';
-import { z } from 'zod';
-import { writeFileSync, unlinkSync, mkdirSync, rmdirSync } from 'fs';
+import { mkdirSync, rmdirSync, unlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { z } from 'zod';
+import { cc } from '../src/index';
 
 /**
  * Integration tests that interact with real files and process spawning
@@ -17,7 +17,7 @@ describe('CC Integration Tests', () => {
     // Create test directory
     try {
       mkdirSync(testDir, { recursive: true });
-    } catch (e) {
+    } catch (_e) {
       // Ignore if exists
     }
   });
@@ -27,7 +27,7 @@ describe('CC Integration Tests', () => {
     try {
       unlinkSync(promptFile);
       rmdirSync(testDir);
-    } catch (e) {
+    } catch (_e) {
       // Ignore cleanup errors
     }
   });
@@ -71,7 +71,7 @@ Return a JSON response with:
         const result = await cc.fromFile(promptFile, {
           title: 'Process List',
           items: ['apple', 'banana', 'orange'],
-          showDetails: true
+          showDetails: true,
         });
 
         // In real scenario, this would succeed with Claude installed
@@ -86,7 +86,7 @@ Return a JSON response with:
     it('should validate input schema from file', async () => {
       const result = await cc.fromFile(promptFile, {
         // Missing required 'title' field
-        items: ['test']
+        items: ['test'],
       });
 
       expect(result.success).toBe(false);
@@ -114,14 +114,14 @@ Return a JSON response with:
           id: z.string().uuid(),
           name: z.string().min(1),
           email: z.string().email(),
-          roles: z.array(z.enum(['admin', 'user', 'guest']))
+          roles: z.array(z.enum(['admin', 'user', 'guest'])),
         }),
         metadata: z.object({
           createdAt: z.string().datetime(),
           tags: z.array(z.string()).optional(),
-          settings: z.record(z.any()).optional()
+          settings: z.record(z.any()).optional(),
         }),
-        status: z.enum(['active', 'pending', 'disabled'])
+        status: z.enum(['active', 'pending', 'disabled']),
       });
 
       const validData = {
@@ -129,19 +129,16 @@ Return a JSON response with:
           id: '123e4567-e89b-12d3-a456-426614174000',
           name: 'John Doe',
           email: 'john@example.com',
-          roles: ['admin', 'user']
+          roles: ['admin', 'user'],
         },
         metadata: {
           createdAt: '2024-01-01T00:00:00Z',
-          tags: ['important', 'verified']
+          tags: ['important', 'verified'],
         },
-        status: 'active'
+        status: 'active',
       };
 
-      const result = cc.validate(
-        { success: true, data: validData },
-        ComplexSchema
-      );
+      const result = cc.validate({ success: true, data: validData }, ComplexSchema);
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -154,13 +151,13 @@ Return a JSON response with:
       const Schema = z.object({
         email: z.string().email(),
         age: z.number().min(18).max(100),
-        website: z.string().url().optional()
+        website: z.string().url().optional(),
       });
 
       const invalidData = {
         email: 'not-an-email',
         age: 150,
-        website: 'not-a-url'
+        website: 'not-a-url',
       };
 
       const result = cc.validate(
@@ -181,6 +178,8 @@ Return a JSON response with:
 
   describe('template interpolation edge cases', () => {
     it('should handle all supported interpolation features', () => {
+      const isActive = true;
+      const isDisabled = false;
       const builder = cc.prompt`
         Name: ${'Alice'}
         Age: ${30}
@@ -188,12 +187,12 @@ Return a JSON response with:
         Tags: ${['admin', 'user']}
         Config: ${{ port: 3000, host: 'localhost' }}
         Nullish: ${null} and ${undefined}
-        Conditional: ${true ? 'YES' : 'NO'}
-        Negation: ${!false ? 'TRUE' : 'FALSE'}
+        Conditional: ${isActive ? 'YES' : 'NO'}
+        Negation: ${!isDisabled ? 'TRUE' : 'FALSE'}
       `;
 
       const result = builder.toString();
-      
+
       expect(result).toContain('Name: Alice');
       expect(result).toContain('Age: 30');
       expect(result).toContain('Active: true');
@@ -208,7 +207,7 @@ Return a JSON response with:
   describe('error handling', () => {
     it('should handle non-existent prompt files gracefully', async () => {
       const result = await cc.fromFile('/non/existent/file.md', {});
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('Failed to load prompt file');
     });
@@ -218,7 +217,7 @@ Return a JSON response with:
       writeFileSync(malformedFile, '---\ninvalid yaml: [\n---\nContent');
 
       const result = await cc.fromFile(malformedFile, {});
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
 

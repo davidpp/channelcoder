@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
+import { Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CCProcess } from '../src/process';
 import type { CCOptions, PromptConfig } from '../src/types';
 
@@ -7,27 +7,27 @@ const mockSpawn = vi.fn();
 const mockProcess = {
   stdin: {
     write: vi.fn(),
-    end: vi.fn()
+    end: vi.fn(),
   },
   stdout: {
-    getReader: vi.fn()
+    getReader: vi.fn(),
   },
   stderr: {
-    getReader: vi.fn()
+    getReader: vi.fn(),
   },
   exited: Promise.resolve(0),
-  kill: vi.fn()
+  kill: vi.fn(),
 };
 
 // @ts-ignore
 global.Bun = {
-  spawn: mockSpawn
+  spawn: mockSpawn,
 };
 
 // Mock fs for system prompt resolution
 vi.mock('fs', () => ({
   existsSync: vi.fn(),
-  readFileSync: vi.fn()
+  readFileSync: vi.fn(),
 }));
 
 describe('CCProcess', () => {
@@ -43,12 +43,13 @@ describe('CCProcess', () => {
     it('should execute basic prompt', async () => {
       const mockStdout = 'Response from Claude';
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode(mockStdout) })
-          .mockResolvedValueOnce({ done: true })
+          .mockResolvedValueOnce({ done: true }),
       });
       mockProcess.stderr.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
 
       const result = await process.execute('Test prompt', {});
@@ -58,7 +59,7 @@ describe('CCProcess', () => {
         expect.objectContaining({
           stdin: 'pipe',
           stdout: 'pipe',
-          stderr: 'pipe'
+          stderr: 'pipe',
         })
       );
       expect(mockProcess.stdin.write).toHaveBeenCalledWith('Test prompt');
@@ -69,10 +70,10 @@ describe('CCProcess', () => {
 
     it('should add system prompt to command', async () => {
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
       mockProcess.stderr.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
 
       await process.execute('Test', { systemPrompt: 'Be helpful' });
@@ -85,10 +86,10 @@ describe('CCProcess', () => {
 
     it('should add allowed tools', async () => {
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
       mockProcess.stderr.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
 
       await process.execute('Test', { allowedTools: ['Read', 'Write'] });
@@ -99,16 +100,16 @@ describe('CCProcess', () => {
       );
     });
 
-
     it('should parse JSON from code blocks', async () => {
       const jsonResponse = 'Here is the result:\n```json\n{"success": true, "data": "test"}\n```';
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode(jsonResponse) })
-          .mockResolvedValueOnce({ done: true })
+          .mockResolvedValueOnce({ done: true }),
       });
       mockProcess.stderr.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
 
       const result = await process.execute('Test', {});
@@ -120,12 +121,13 @@ describe('CCProcess', () => {
     it('should handle process errors', async () => {
       mockProcess.exited = Promise.resolve(1);
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
       mockProcess.stderr.getReader.mockReturnValue({
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode('Error occurred') })
-          .mockResolvedValueOnce({ done: true })
+          .mockResolvedValueOnce({ done: true }),
       });
 
       const result = await process.execute('Test', {});
@@ -137,29 +139,31 @@ describe('CCProcess', () => {
 
     it('should handle timeout', async () => {
       vi.useFakeTimers();
-      
+
       let resolveExited: (value: number) => void;
-      mockProcess.exited = new Promise(resolve => { resolveExited = resolve; });
-      
+      mockProcess.exited = new Promise((resolve) => {
+        resolveExited = resolve;
+      });
+
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi.fn().mockImplementation(() => new Promise(() => {})) // Never resolves
+        read: vi.fn().mockImplementation(() => new Promise(() => {})), // Never resolves
       });
       mockProcess.stderr.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
 
       const executePromise = process.execute('Test', { timeout: 1000 });
 
       // Advance time to trigger timeout
       vi.advanceTimersByTime(1000);
-      
-      // Resolve the process exit
-      resolveExited!(0);
 
-      const result = await executePromise;
+      // Resolve the process exit
+      resolveExited?.(0);
+
+      const _result = await executePromise;
 
       expect(mockProcess.kill).toHaveBeenCalled();
-      
+
       vi.useRealTimers();
     });
 
@@ -179,7 +183,7 @@ describe('CCProcess', () => {
     it('should stream content chunks', async () => {
       const chunks = [
         '{"type": "content", "text": "Hello "}',
-        '{"type": "content", "text": "World!"}'
+        '{"type": "content", "text": "World!"}',
       ];
 
       let chunkIndex = 0;
@@ -187,16 +191,16 @@ describe('CCProcess', () => {
         read: vi.fn().mockImplementation(() => {
           if (chunkIndex < chunks.length) {
             const chunk = chunks[chunkIndex++];
-            return Promise.resolve({ 
-              done: false, 
-              value: new TextEncoder().encode(chunk + '\n') 
+            return Promise.resolve({
+              done: false,
+              value: new TextEncoder().encode(`${chunk}\n`),
             });
           }
           return Promise.resolve({ done: true });
-        })
+        }),
       });
       mockProcess.stderr.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
 
       const received = [];
@@ -212,10 +216,10 @@ describe('CCProcess', () => {
 
     it('should add stream-json format and verbose flag', async () => {
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
       mockProcess.stderr.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
 
       const chunks = [];
@@ -224,11 +228,7 @@ describe('CCProcess', () => {
       }
 
       expect(mockSpawn).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          'claude', '-p',
-          '--output-format', 'stream-json',
-          '--verbose'
-        ]),
+        expect.arrayContaining(['claude', '-p', '--output-format', 'stream-json', '--verbose']),
         expect.any(Object)
       );
     });
@@ -237,19 +237,20 @@ describe('CCProcess', () => {
       const toolEvent = JSON.stringify({
         type: 'tool_use',
         name: 'Read',
-        input: { file: 'test.txt' }
+        input: { file: 'test.txt' },
       });
 
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi.fn()
-          .mockResolvedValueOnce({ 
-            done: false, 
-            value: new TextEncoder().encode(toolEvent + '\n') 
+        read: vi
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode(`${toolEvent}\n`),
           })
-          .mockResolvedValueOnce({ done: true })
+          .mockResolvedValueOnce({ done: true }),
       });
       mockProcess.stderr.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
 
       const chunks = [];
@@ -264,15 +265,16 @@ describe('CCProcess', () => {
 
     it('should handle non-JSON lines as content', async () => {
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi.fn()
-          .mockResolvedValueOnce({ 
-            done: false, 
-            value: new TextEncoder().encode('Plain text output\n') 
+        read: vi
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode('Plain text output\n'),
           })
-          .mockResolvedValueOnce({ done: true })
+          .mockResolvedValueOnce({ done: true }),
       });
       mockProcess.stderr.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
 
       const chunks = [];
@@ -288,10 +290,10 @@ describe('CCProcess', () => {
     it('should yield error on process failure', async () => {
       mockProcess.exited = Promise.resolve(1);
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
       mockProcess.stderr.getReader.mockReturnValue({
-        read: vi.fn().mockResolvedValueOnce({ done: true })
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
       });
 
       const chunks = [];
@@ -299,8 +301,10 @@ describe('CCProcess', () => {
         chunks.push(chunk);
       }
 
-      expect(chunks.some(c => c.type === 'error')).toBe(true);
-      expect(chunks.find(c => c.type === 'error')?.content).toContain('Process exited with code 1');
+      expect(chunks.some((c) => c.type === 'error')).toBe(true);
+      expect(chunks.find((c) => c.type === 'error')?.content).toContain(
+        'Process exited with code 1'
+      );
     });
   });
 });

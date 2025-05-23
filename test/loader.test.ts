@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { loadPromptFile, resolveSystemPrompt } from '../src/loader';
-import { readFileSync, existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+import { loadPromptFile, resolveSystemPrompt } from '../src/loader';
 
 // Mock fs module
 vi.mock('fs', () => ({
   readFileSync: vi.fn(),
-  existsSync: vi.fn()
+  existsSync: vi.fn(),
 }));
 
 describe('loader', () => {
@@ -34,7 +34,7 @@ Hello \${name}!`;
       expect(readFileSync).toHaveBeenCalledWith('test.md', 'utf-8');
       expect(result.config).toEqual({
         systemPrompt: 'You are helpful',
-        allowedTools: ['Read', 'Write']
+        allowedTools: ['Read', 'Write'],
       });
       expect(result.content).toContain('Hello ${name}!');
     });
@@ -96,13 +96,13 @@ Content`;
 
       expect(result.config.input).toBeDefined();
       const schema = result.config.input as Record<string, z.ZodType>;
-      
+
       // Verify array type
       expect(schema.tags).toBeDefined();
-      
+
       // Verify enum type
       expect(schema.status).toBeDefined();
-      
+
       // Verify number with constraints
       expect(schema.count).toBeDefined();
     });
@@ -185,10 +185,10 @@ Content`;
 
       // Test that optional field is actually optional
       const testSchema = z.object(schema);
-      
+
       // Should pass without optional field
       expect(() => testSchema.parse({ required: 'test' })).not.toThrow();
-      
+
       // Should fail without required field
       expect(() => testSchema.parse({ optional: 'test' })).toThrow();
     });
@@ -210,7 +210,7 @@ Content`;
       const testSchema = z.object(schema);
       const parsed = testSchema.parse({
         items: ['a', 'b'],
-        numbers: [1, 2, 3]
+        numbers: [1, 2, 3],
       });
 
       expect(parsed.items).toEqual(['a', 'b']);
@@ -239,7 +239,7 @@ Content`;
 
       expect(parsed).toEqual({
         status: 'pending',
-        count: 0
+        count: 0,
       });
     });
   });

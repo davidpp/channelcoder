@@ -9,9 +9,9 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/types.ts']
+      exclude: ['src/**/*.test.ts', 'src/types.ts'],
     },
     testTimeout: 10000,
-    hookTimeout: 10000
-  }
+    hookTimeout: 10000,
+  },
 });
