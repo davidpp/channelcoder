@@ -99,6 +99,30 @@ describe('PromptTemplate', () => {
     });
   });
 
+  describe('curly brace syntax', () => {
+    test('should support {variable} syntax', () => {
+      const result = template.interpolate('Hello {name}!', { name: 'World' });
+      expect(result).toBe('Hello World!');
+    });
+
+    test('should support both {variable} and ${variable} in same template', () => {
+      const result = template.interpolate('New: {value}, Old: ${value}', { value: 'test' });
+      expect(result).toBe('New: test, Old: test');
+    });
+
+    test('should handle escaped curly braces', () => {
+      const result = template.interpolate('Price: \\{price}', { price: 100 });
+      expect(result).toBe('Price: {price}');
+    });
+
+    test('should support nested properties with curly braces', () => {
+      const result = template.interpolate('User {user.name} has role {user.role}', {
+        user: { name: 'Bob', role: 'user' }
+      });
+      expect(result).toBe('User Bob has role user');
+    });
+  });
+
   describe('complex expressions', () => {
     test('should handle comparisons in ternary', () => {
       const result = template.interpolate('${count > 5 ? "Many" : "Few"}', { count: 10 });

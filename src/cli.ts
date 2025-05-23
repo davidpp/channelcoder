@@ -31,8 +31,6 @@ Usage:
   channelcoder <prompt-file> [options]   Execute prompt from file
   channelcoder -p "inline prompt" [options]   Execute inline prompt
   
-  (or use the short alias 'cc' instead of 'channelcoder')
-  
 Options:
   -p, --prompt <text>      Use inline prompt instead of file
   -d, --data <key=value>   Data for interpolation (can be used multiple times)
@@ -52,16 +50,16 @@ Options:
 
 Examples:
   # Execute prompt file with data
-  cc prompts/analyze.md -d taskId=FEAT-123 -d context="Fix bug"
+  channelcoder prompts/analyze.md -d taskId=FEAT-123 -d context="Fix bug"
   
   # Inline prompt with system prompt
-  cc -p "Summarize: \${text}" -d text="..." -s "Be concise"
+  channelcoder -p "Summarize: {text}" -d text="..." -s "Be concise"
   
   # Stream response with tools
-  cc prompts/generate.md --stream -t "Read Write"
+  channelcoder prompts/generate.md --stream -t "Read Write"
   
   # Complex data via stdin
-  echo '{"items": ["a", "b", "c"]}' | cc prompts/process.md --data-stdin
+  echo '{"items": ["a", "b", "c"]}' | channelcoder prompts/process.md --data-stdin
 `);
 }
 
@@ -260,6 +258,8 @@ async function main() {
 
         if (values.verbose) {
           console.log('📝 Executing inline prompt');
+          console.log('  Original:', values.prompt);
+          console.log('  Interpolated:', interpolated);
         }
 
         result = await cc.run(interpolated, options);
@@ -313,14 +313,7 @@ async function main() {
 }
 
 // Run CLI
-// Check if this file is being run directly
-const isMainModule = import.meta.url === `file://${process.argv[1]}` || 
-                    process.argv[1]?.endsWith('/cli.cjs') ||
-                    process.argv[1]?.endsWith('/cli.mjs');
-
-if (isMainModule) {
-  main().catch(error => {
-    console.error('❌ Fatal error:', error);
-    process.exit(1);
-  });
-}
+main().catch((error) => {
+  console.error('❌ Fatal error:', error);
+  process.exit(1);
+});
