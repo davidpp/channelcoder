@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [1.1.1] - 2025-01-24
+
+### Added
+- **Template Syntax**: New `{var}` interpolation syntax alongside existing `${var}` for better fish shell compatibility
+
+### Fixed
+- **CLI Installation**: Resolved critical npm global installation failure due to incorrect module detection
+- **Command Conflict**: Removed `cc` command alias that conflicted with system C compiler on macOS
+- **Module Detection**: Fixed CLI failing to execute when installed globally via npm
+
 ## [1.1.0] - 2025-01-23
 
 ### Fixed
