@@ -22,7 +22,7 @@ function runCommand(cmd: string) {
   try {
     execSync(cmd, { stdio: 'inherit', cwd: process.cwd() });
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
@@ -42,7 +42,7 @@ function error(message: string) {
 async function main() {
   console.log(`${yellow}🚬 Running E2E CLI smoke tests...${reset}\n`);
   console.log(`${blue}These tests will make real Claude API calls${reset}\n`);
-  
+
   let hasErrors = false;
 
   // Test 1: Build the project
@@ -65,8 +65,12 @@ async function main() {
   // Test 3: E2E test with inline prompt and interpolation
   log('Testing E2E: inline prompt with variable interpolation...');
   console.log(`${blue}This will call Claude API to test the full flow${reset}`);
-  
-  if (!runCommand('node dist/cli.cjs -p "Complete this sentence in exactly 5 words: The value is {testValue}" -d testValue=forty-two --verbose')) {
+
+  if (
+    !runCommand(
+      'node dist/cli.cjs -p "Complete this sentence in exactly 5 words: The value is {testValue}" -d testValue=forty-two --verbose'
+    )
+  ) {
     error('E2E inline prompt test failed!');
     hasErrors = true;
   } else {
@@ -77,7 +81,7 @@ async function main() {
   log('Testing E2E: markdown file with frontmatter and interpolation...');
   const tmpDir = mkdtempSync(join(tmpdir(), 'cc-smoke-'));
   const promptFile = join(tmpDir, 'test-prompt.md');
-  
+
   try {
     // Create a test prompt file with frontmatter
     writeFileSync(
@@ -91,13 +95,17 @@ allowedTools: ["Read", "Write"]
 
 Please respond with exactly one word that describes the number {number}.
 
-The number is: {number}`,
+The number is: {number}`
     );
-    
+
     console.log(`${blue}Created test file: ${promptFile}${reset}`);
     console.log(`${blue}This will parse .md frontmatter and call Claude API${reset}`);
-    
-    if (!runCommand(`node dist/cli.cjs "${promptFile}" -d taskName="Number Description" -d number=7 --verbose`)) {
+
+    if (
+      !runCommand(
+        `node dist/cli.cjs "${promptFile}" -d taskName="Number Description" -d number=7 --verbose`
+      )
+    ) {
       error('E2E markdown file test failed!');
       hasErrors = true;
     } else {
@@ -111,7 +119,7 @@ The number is: {number}`,
   // Test 5: E2E test with streaming
   log('Testing E2E: streaming response...');
   console.log(`${blue}Testing streaming output from Claude${reset}`);
-  
+
   if (!runCommand('node dist/cli.cjs -p "Count from 1 to 5, one number per line" --stream')) {
     error('E2E streaming test failed!');
     hasErrors = true;
@@ -122,7 +130,7 @@ The number is: {number}`,
   // Test 6: Test JSON output format
   log('Testing JSON output format...');
   console.log(`${blue}Testing --json flag for programmatic usage${reset}`);
-  
+
   if (!runCommand('node dist/cli.cjs -p "Return the word: success" --json')) {
     error('JSON output format test failed!');
     hasErrors = true;
@@ -131,7 +139,7 @@ The number is: {number}`,
   }
 
   // Summary
-  console.log('\n' + '='.repeat(60));
+  console.log(`\n${'='.repeat(60)}`);
   if (hasErrors) {
     console.log(`${red}❌ Some E2E smoke tests failed!${reset}`);
     console.log(`${yellow}⚠️  Fix the issues before publishing to npm.${reset}\n`);
@@ -140,12 +148,12 @@ The number is: {number}`,
     console.log(`${green}✅ All E2E smoke tests passed!${reset}`);
     console.log(`${green}📦 Package is ready for npm publish.${reset}`);
     console.log(`${green}✨ Successfully tested:${reset}`);
-    console.log(`  - CLI loads and shows help`);
-    console.log(`  - Variable interpolation works ({var} syntax)`);
-    console.log(`  - Markdown file parsing with frontmatter`);
-    console.log(`  - Real Claude API calls`);
-    console.log(`  - Streaming responses`);
-    console.log(`  - JSON output format`);
+    console.log('  - CLI loads and shows help');
+    console.log('  - Variable interpolation works ({var} syntax)');
+    console.log('  - Markdown file parsing with frontmatter');
+    console.log('  - Real Claude API calls');
+    console.log('  - Streaming responses');
+    console.log('  - JSON output format');
     console.log('');
   }
 }

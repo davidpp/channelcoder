@@ -46,7 +46,7 @@ async function runCommand(
   cmd: string[],
   description: string,
   showAllOutput = false,
-  streaming = false
+  _streaming = false
 ): Promise<{ success: boolean; output: string }> {
   console.log(`🔧 ${description}`);
 
@@ -67,7 +67,7 @@ async function runCommand(
         if (done) break;
         stdout += decoder.decode(value);
       }
-    } catch (error) {
+    } catch (_error) {
       // Ignore read errors
     }
   }
@@ -81,7 +81,7 @@ async function runCommand(
         if (done) break;
         stderr += decoder.decode(value);
       }
-    } catch (error) {
+    } catch (_error) {
       // Ignore read errors
     }
   }
@@ -213,7 +213,7 @@ async function analyzeRelease(requestedVersion?: string, verbose = false): Promi
     mkdirSync('.release');
   }
 
-  console.log(`📋 Analysis Context:`);
+  console.log('📋 Analysis Context:');
   console.log(`  Current: ${currentVersion}`);
   console.log(`  Last Tag: ${lastTag}`);
   console.log(`  Requested: ${requestedVersion || 'auto-detect'}`);
@@ -267,7 +267,7 @@ async function executeRelease(dryRun = false, skipBuild = false): Promise<void> 
   const metadata: ReleaseMetadata = JSON.parse(readFileSync('.release/metadata.json', 'utf-8'));
   const changelogContent = readFileSync('.release/changelog.md', 'utf-8');
 
-  console.log(`\n📋 Release Plan:`);
+  console.log('\n📋 Release Plan:');
   console.log(`  Version: ${version.current_version} → ${version.new_version}`);
   console.log(`  Type: ${version.bump_type}`);
   console.log(`  Confidence: ${version.confidence}`);
@@ -292,7 +292,7 @@ async function executeRelease(dryRun = false, skipBuild = false): Promise<void> 
   console.log('\n📦 Updating package.json...');
   const pkg = JSON.parse(readFileSync('package.json', 'utf-8'));
   pkg.version = version.new_version;
-  writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+  writeFileSync('package.json', `${JSON.stringify(pkg, null, 2)}\n`);
 
   // 2. Update CHANGELOG.md
   console.log('📄 Updating CHANGELOG.md...');
@@ -354,10 +354,10 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
   }
 
   console.log('\n🎉 Release prepared successfully!');
-  console.log(`\nNext steps:`);
-  console.log(`  1. Review: git show HEAD`);
-  console.log(`  2. Push: git push origin main --tags`);
-  console.log(`  3. Publish: npm publish`);
+  console.log('\nNext steps:');
+  console.log('  1. Review: git show HEAD');
+  console.log('  2. Push: git push origin main --tags');
+  console.log('  3. Publish: npm publish');
 }
 
 async function publishRelease(otp?: string): Promise<void> {
@@ -385,7 +385,7 @@ async function publishRelease(otp?: string): Promise<void> {
         releaseNotes = readFileSync('.release/changelog.md', 'utf-8');
         console.log('  Using changelog from .release/changelog.md');
       }
-    } catch (error) {
+    } catch (_error) {
       console.warn('  Could not read .release/changelog.md, will use auto-generated notes');
     }
 
@@ -422,7 +422,7 @@ async function publishRelease(otp?: string): Promise<void> {
       await runCommand(['rm', '-rf', '.release'], 'Clean up release artifacts');
       console.log('🧹 Cleaned up .release directory');
     }
-  } catch (error) {
+  } catch (_error) {
     console.warn('⚠️  Could not clean up .release directory');
   }
 }

@@ -22,18 +22,24 @@ export class PromptTemplate {
     let interpolated = escaped.replace(/(?<!\$)\{([^}]+)\}/g, (match, expression) => {
       return this.processExpression(expression, data, match);
     });
-    
+
     // Also handle ${expression} for backward compatibility
     interpolated = interpolated.replace(/\$\{([^}]+)\}/g, (match, expression) => {
       return this.processExpression(expression, data, match);
     });
 
     // Restore escaped symbols
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Using control chars as temporary placeholders
     interpolated = interpolated.replace(/\u0000/g, '${');
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Using control chars as temporary placeholders
     return interpolated.replace(/\u0001/g, '{');
   }
-  
-  private processExpression(expression: string, data: InterpolationData, originalMatch: string): string {
+
+  private processExpression(
+    expression: string,
+    data: InterpolationData,
+    originalMatch: string
+  ): string {
     try {
       // Check if it's a simple variable
       const trimmed = expression.trim();

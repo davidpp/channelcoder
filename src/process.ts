@@ -11,7 +11,10 @@ export class CCProcess {
 
   constructor(private defaultOptions: CCOptions) {
     // Allow skipping availability check for testing
-    this.skipAvailabilityCheck = process.env.NODE_ENV === 'test' || process.env.BUN_ENV === 'test' || process.env.SKIP_CLAUDE_CHECK === 'true';
+    this.skipAvailabilityCheck =
+      process.env.NODE_ENV === 'test' ||
+      process.env.BUN_ENV === 'test' ||
+      process.env.SKIP_CLAUDE_CHECK === 'true';
   }
 
   /**
@@ -38,12 +41,12 @@ export class CCProcess {
       const proc = spawn('claude', ['--version'], {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
-      
+
       const exitCode = await new Promise<number>((resolve) => {
         proc.on('exit', (code) => resolve(code || 0));
         proc.on('error', () => resolve(1));
       });
-      
+
       this.claudeAvailable = exitCode === 0;
       return this.claudeAvailable;
     } catch {
@@ -90,13 +93,13 @@ export class CCProcess {
       // Collect output
       let stdout = '';
       let stderr = '';
-      
+
       if (proc.stdout) {
         proc.stdout.on('data', (chunk) => {
           stdout += chunk.toString();
         });
       }
-      
+
       if (proc.stderr) {
         proc.stderr.on('data', (chunk) => {
           stderr += chunk.toString();
@@ -235,19 +238,19 @@ export class CCProcess {
       if (proc.stdout) {
         let buffer = '';
         proc.stdout.setEncoding('utf8');
-        
+
         proc.stdout.on('data', (chunk: string) => {
           buffer += chunk;
           const lines = buffer.split('\n');
           buffer = lines.pop() || '';
-          
+
           for (const line of lines) {
             if (line.trim()) {
               chunks.push(this.parseStreamLine(line));
             }
           }
         });
-        
+
         proc.stdout.on('end', () => {
           if (buffer.trim()) {
             chunks.push(this.parseStreamLine(buffer));
@@ -260,7 +263,7 @@ export class CCProcess {
         error = err;
         done = true;
       });
-      
+
       proc.on('exit', (code) => {
         if (code !== 0 && !error) {
           chunks.push({
@@ -275,10 +278,11 @@ export class CCProcess {
       // Yield chunks as they become available
       while (!done || chunks.length > 0) {
         if (chunks.length > 0) {
-          yield chunks.shift()!;
+          const chunk = chunks.shift();
+          if (chunk) yield chunk;
         } else if (!done) {
           // Wait a bit for more chunks
-          await new Promise(resolve => setTimeout(resolve, 10));
+          await new Promise((resolve) => setTimeout(resolve, 10));
         }
       }
 

@@ -117,7 +117,7 @@ describe('PromptTemplate', () => {
 
     test('should support nested properties with curly braces', () => {
       const result = template.interpolate('User {user.name} has role {user.role}', {
-        user: { name: 'Bob', role: 'user' }
+        user: { name: 'Bob', role: 'user' },
       });
       expect(result).toBe('User Bob has role user');
     });

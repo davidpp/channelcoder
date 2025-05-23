@@ -51,7 +51,7 @@ async function main() {
   // Build the project
   console.log('=== Building project ===');
   const buildResult = await runCommand('bun', ['run', 'build']);
-  
+
   if (buildResult.code !== 0) {
     console.error('\n❌ Build failed');
     process.exit(1);

@@ -1,6 +1,6 @@
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { execSync } from 'child_process';
-import { writeFileSync, unlinkSync, existsSync } from 'fs';
+import { existsSync, unlinkSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 
 describe('Node.js Compatibility', () => {
@@ -37,9 +37,9 @@ describe('Node.js Compatibility', () => {
       console.log(typeof cc.fromFile);
       console.log(typeof cc.stream);
     `;
-    
+
     writeFileSync('test-sdk-import.mjs', testScript);
-    
+
     try {
       const output = execSync('node test-sdk-import.mjs', { encoding: 'utf-8' });
       expect(output).toContain('SDK loaded successfully');
@@ -63,7 +63,7 @@ describe('Node.js Compatibility', () => {
       console.log(typeof cc.stream);
     `;
     writeFileSync('test-cjs.cjs', cjsScript);
-    
+
     try {
       const output = execSync('node test-cjs.cjs', { encoding: 'utf-8' });
       expect(output).toContain('CJS import successful');
@@ -103,9 +103,9 @@ describe('Node.js Compatibility', () => {
         console.log('Output:', output.trim());
       });
     `;
-    
+
     writeFileSync('test-spawn.mjs', testScript);
-    
+
     try {
       const output = execSync('node test-spawn.mjs', { encoding: 'utf-8' });
       expect(output).toContain('Exit code: 0');

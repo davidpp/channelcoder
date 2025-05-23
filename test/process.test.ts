@@ -35,21 +35,21 @@ class MockChildProcess extends EventEmitter {
   stdout = new EventEmitter();
   stderr = new EventEmitter();
   kill = mock(() => true);
-  
-  constructor(public exitCode: number = 0) {
+
+  constructor(public exitCode = 0) {
     super();
   }
-  
+
   // Helper to simulate process exit
   simulateExit() {
     this.emit('exit', this.exitCode);
   }
-  
+
   // Helper to simulate stdout data
   simulateStdout(data: string) {
     this.stdout.emit('data', Buffer.from(data));
   }
-  
+
   // Helper to simulate stderr data
   simulateStderr(data: string) {
     this.stderr.emit('data', Buffer.from(data));
@@ -194,7 +194,7 @@ describe('CCProcess', () => {
         await new Promise((resolve) => setTimeout(resolve, 150));
 
         // Resolve the process exit
-        resolveExited!(0);
+        resolveExited?.(0);
 
         const result = await executePromise;
 
