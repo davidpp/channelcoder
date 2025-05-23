@@ -1,6 +1,6 @@
 import { mkdirSync, rmdirSync, unlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { z } from 'zod';
 import { cc } from '../src/index';
 
@@ -33,7 +33,7 @@ describe('CC Integration Tests', () => {
   });
 
   describe('file-based prompts', () => {
-    it('should load real file and interpolate variables', async () => {
+    test('should load real file and interpolate variables', async () => {
       // Create test prompt file
       const promptContent = `---
 input:
@@ -81,9 +81,9 @@ Return a JSON response with:
         // Expected in test environment without Claude CLI
         expect(error).toBeDefined();
       }
-    });
+    }, { timeout: 10000 });
 
-    it('should validate input schema from file', async () => {
+    test('should validate input schema from file', async () => {
       const result = await cc.fromFile(promptFile, {
         // Missing required 'title' field
         items: ['test'],
@@ -92,9 +92,9 @@ Return a JSON response with:
       expect(result.success).toBe(false);
       expect(result.error).toContain('Input validation failed');
       expect(result.error).toContain('title');
-    });
+    }, { timeout: 10000 });
 
-    it('should handle optional fields correctly', async () => {
+    test('should handle optional fields correctly', async () => {
       const result = await cc.fromFile(promptFile, {
         title: 'Test',
         items: ['a', 'b'],
@@ -104,11 +104,11 @@ Return a JSON response with:
       // Would succeed with Claude installed
       // We're mainly testing that validation passes
       expect(result.error).not.toContain('Input validation failed');
-    });
+    }, { timeout: 10000 });
   });
 
   describe('schema validation', () => {
-    it('should work with complex nested schemas', () => {
+    test('should work with complex nested schemas', () => {
       const ComplexSchema = z.object({
         user: z.object({
           id: z.string().uuid(),
@@ -147,7 +147,7 @@ Return a JSON response with:
       }
     });
 
-    it('should provide detailed validation errors', () => {
+    test('should provide detailed validation errors', () => {
       const Schema = z.object({
         email: z.string().email(),
         age: z.number().min(18).max(100),
@@ -177,7 +177,7 @@ Return a JSON response with:
   });
 
   describe('template interpolation edge cases', () => {
-    it('should handle all supported interpolation features', () => {
+    test('should handle all supported interpolation features', () => {
       const isActive = true;
       const isDisabled = false;
       const builder = cc.prompt`
@@ -205,14 +205,14 @@ Return a JSON response with:
   });
 
   describe('error handling', () => {
-    it('should handle non-existent prompt files gracefully', async () => {
+    test('should handle non-existent prompt files gracefully', async () => {
       const result = await cc.fromFile('/non/existent/file.md', {});
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Failed to load prompt file');
-    });
+    }, { timeout: 10000 });
 
-    it('should handle malformed prompt files', async () => {
+    test('should handle malformed prompt files', async () => {
       const malformedFile = join(testDir, 'malformed.md');
       writeFileSync(malformedFile, '---\ninvalid yaml: [\n---\nContent');
 
@@ -222,6 +222,6 @@ Return a JSON response with:
       expect(result.error).toBeDefined();
 
       unlinkSync(malformedFile);
-    });
+    }, { timeout: 10000 });
   });
 });

@@ -117,6 +117,103 @@ Options:
   -h, --help               Show help
 ```
 
+### Frontmatter Syntax
+
+File-based prompts support YAML frontmatter for configuration. Here are the **actually supported** options:
+
+```yaml
+---
+# System prompt - Sets the Claude system/assistant prompt
+# Can be inline text or a path to a .md/.txt file
+systemPrompt: "You are a helpful coding assistant"
+# or
+systemPrompt: "./system-prompts/analyst.md"
+
+# Allowed tools - Restrict which tools Claude can use
+# These are passed to Claude CLI's --allowedTools flag
+allowedTools:
+  - "Read"                    # Read files
+  - "Write"                   # Write files
+  - "Edit"                    # Edit files
+  - "Bash"                    # Run any bash command
+  - "Bash(git:*)"            # Pattern: only git commands
+  - "Bash(npm:test)"         # Specific: only npm test
+  - "Grep"                   # Search file contents
+  - "WebSearch"              # Search the web
+
+# Input schema - Validates variables before interpolation
+input:
+  name: string               # Required string
+  age?: number              # Optional number
+  tags: string[]            # Array of strings
+  config:                   # Nested object
+    port: number
+    host?: string
+
+# Output schema - Validates Claude's response (SDK only)
+output:
+  success: boolean
+  result:
+    type: string
+    enum: [feature, bug, chore]  # Enum constraint
+  items: 
+    - name: string
+      done: boolean
+---
+Your prompt content here...
+```
+
+**Note:** The following options are passed via CLI or SDK, not frontmatter:
+- `outputFormat` - Use `--json` flag or `cc.run(prompt, { outputFormat: 'json' })`
+- `stream` - Use `--stream` flag or `cc.stream()`
+- `verbose` - Use `--verbose` flag or `cc.run(prompt, { verbose: true })`
+- `timeout` - SDK only: `cc.run(prompt, { timeout: 30000 })`
+
+#### Schema Definition Formats
+
+Schemas can be defined in multiple ways:
+
+**1. YAML Notation (Simplified)**
+```yaml
+---
+input:
+  name: string              # Basic types: string, number, boolean
+  age?: number             # Optional with ?
+  tags: string[]           # Arrays with []
+  metadata:                # Nested objects
+    created: date
+    updated?: date
+---
+```
+
+**2. JSON Schema Format**
+```yaml
+---
+input:
+  type: object
+  properties:
+    name:
+      type: string
+      description: "User's name"
+    age:
+      type: number
+      minimum: 0
+  required: ["name"]
+---
+```
+
+**3. Programmatic (SDK only)**
+```typescript
+import { z } from 'zod';
+
+const schema = z.object({
+  name: z.string(),
+  age: z.number().optional()
+});
+
+cc.prompt`...`.withSchema(schema);
+```
+
 ### Examples
 
 #### File-based Prompts

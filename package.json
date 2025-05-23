@@ -11,10 +11,9 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
-    "test:watch": "vitest --watch",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage",
     "dev": "tsc --watch",
     "cli": "bun run src/cli.ts",
     "cli:help": "bun run src/cli.ts --help",
@@ -29,9 +28,15 @@
     "format": "biome format --write .",
     "check": "bun run scripts/code-check.ts",
     "check:full": "bun run scripts/code-check.ts --full",
-    "check:staged": "bun run scripts/code-check.ts --staged"
+    "check:staged": "bun run scripts/code-check.ts --staged",
+    "release": "bun run scripts/release.ts",
+    "release:precheck": "bun run scripts/release.ts precheck",
+    "release:analyze": "bun run scripts/release.ts analyze",
+    "release:run": "bun run scripts/release.ts run",
+    "release:full": "bun run scripts/release.ts full"
   },
   "dependencies": {
+    "commander": "^14.0.0",
     "gray-matter": "^4.0.3",
     "zod": "^3.22.4"
   },
@@ -39,11 +44,8 @@
     "@biomejs/biome": "^1.9.4",
     "@types/bun": "latest",
     "@types/node": "^22.15.21",
-    "@vitest/coverage-v8": "^1.0.0",
-    "@vitest/ui": "^1.0.0",
     "simple-git": "^3.27.0",
-    "typescript": "^5.0.0",
-    "vitest": "^1.0.0"
+    "typescript": "^5.0.0"
   },
   "peerDependencies": {
     "bun": ">=1.0.0"

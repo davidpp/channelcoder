@@ -1,21 +1,27 @@
-import { existsSync, readFileSync } from 'fs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, test, mock } from 'bun:test';
 import { z } from 'zod';
 import { loadPromptFile, resolveSystemPrompt } from '../src/loader';
 
 // Mock fs module
-vi.mock('fs', () => ({
-  readFileSync: vi.fn(),
-  existsSync: vi.fn(),
+mock.module('fs', () => ({
+  readFileSync: mock(() => ''),
+  existsSync: mock(() => false),
 }));
+
+import { existsSync, readFileSync } from 'fs';
+
+// Get mocked functions
+const mockedReadFileSync = readFileSync as ReturnType<typeof mock>;
+const mockedExistsSync = existsSync as ReturnType<typeof mock>;
 
 describe('loader', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockedReadFileSync.mockClear();
+    mockedExistsSync.mockClear();
   });
 
   describe('loadPromptFile', () => {
-    it('should load and parse prompt file with frontmatter', async () => {
+    test('should load and parse prompt file with frontmatter', async () => {
       const mockContent = `---
 systemPrompt: "You are helpful"
 allowedTools:
@@ -27,11 +33,11 @@ allowedTools:
 
 Hello \${name}!`;
 
-      vi.mocked(readFileSync).mockReturnValue(mockContent);
+      mockedReadFileSync.mockReturnValue(mockContent);
 
       const result = await loadPromptFile('test.md');
 
-      expect(readFileSync).toHaveBeenCalledWith('test.md', 'utf-8');
+      expect(mockedReadFileSync).toHaveBeenCalledWith('test.md', 'utf-8');
       expect(result.config).toEqual({
         systemPrompt: 'You are helpful',
         allowedTools: ['Read', 'Write'],
@@ -39,7 +45,7 @@ Hello \${name}!`;
       expect(result.content).toContain('Hello ${name}!');
     });
 
-    it('should parse input schema from YAML notation', async () => {
+    test('should parse input schema from YAML notation', async () => {
       const mockContent = `---
 input:
   name: string
@@ -48,7 +54,7 @@ input:
 ---
 Content`;
 
-      vi.mocked(readFileSync).mockReturnValue(mockContent);
+      mockedReadFileSync.mockReturnValue(mockContent);
 
       const result = await loadPromptFile('test.md');
 
@@ -58,7 +64,7 @@ Content`;
       expect(result.config.input).toHaveProperty('optional');
     });
 
-    it('should parse output schema', async () => {
+    test('should parse output schema', async () => {
       const mockContent = `---
 output:
   success: boolean
@@ -66,7 +72,7 @@ output:
 ---
 Content`;
 
-      vi.mocked(readFileSync).mockReturnValue(mockContent);
+      mockedReadFileSync.mockReturnValue(mockContent);
 
       const result = await loadPromptFile('test.md');
 
@@ -75,7 +81,7 @@ Content`;
       expect(result.config.output).toBeInstanceOf(z.ZodObject);
     });
 
-    it('should handle complex schema types', async () => {
+    test('should handle complex schema types', async () => {
       const mockContent = `---
 input:
   tags:
@@ -90,7 +96,7 @@ input:
 ---
 Content`;
 
-      vi.mocked(readFileSync).mockReturnValue(mockContent);
+      mockedReadFileSync.mockReturnValue(mockContent);
 
       const result = await loadPromptFile('test.md');
 
@@ -107,8 +113,8 @@ Content`;
       expect(schema.count).toBeDefined();
     });
 
-    it('should handle file read errors', async () => {
-      vi.mocked(readFileSync).mockImplementation(() => {
+    test('should handle file read errors', async () => {
+      mockedReadFileSync.mockImplementation(() => {
         throw new Error('File not found');
       });
 
@@ -117,9 +123,9 @@ Content`;
       );
     });
 
-    it('should handle files without frontmatter', async () => {
+    test('should handle files without frontmatter', async () => {
       const mockContent = 'Just content, no frontmatter';
-      vi.mocked(readFileSync).mockReturnValue(mockContent);
+      mockedReadFileSync.mockReturnValue(mockContent);
 
       const result = await loadPromptFile('test.md');
 
@@ -129,48 +135,48 @@ Content`;
   });
 
   describe('resolveSystemPrompt', () => {
-    it('should load content from .md file if it exists', async () => {
-      vi.mocked(existsSync).mockReturnValue(true);
-      vi.mocked(readFileSync).mockReturnValue('System prompt content');
+    test('should load content from .md file if it exists', async () => {
+      mockedExistsSync.mockReturnValue(true);
+      mockedReadFileSync.mockReturnValue('System prompt content');
 
       const result = await resolveSystemPrompt('system.md');
 
-      expect(existsSync).toHaveBeenCalledWith('system.md');
-      expect(readFileSync).toHaveBeenCalledWith('system.md', 'utf-8');
+      expect(mockedExistsSync).toHaveBeenCalledWith('system.md');
+      expect(mockedReadFileSync).toHaveBeenCalledWith('system.md', 'utf-8');
       expect(result).toBe('System prompt content');
     });
 
-    it('should load content from .txt file if it exists', async () => {
-      vi.mocked(existsSync).mockReturnValue(true);
-      vi.mocked(readFileSync).mockReturnValue('Text content');
+    test('should load content from .txt file if it exists', async () => {
+      mockedExistsSync.mockReturnValue(true);
+      mockedReadFileSync.mockReturnValue('Text content');
 
       const result = await resolveSystemPrompt('prompt.txt');
 
-      expect(existsSync).toHaveBeenCalledWith('prompt.txt');
+      expect(mockedExistsSync).toHaveBeenCalledWith('prompt.txt');
       expect(result).toBe('Text content');
     });
 
-    it('should return inline content if not a file path', async () => {
+    test('should return inline content if not a file path', async () => {
       const inline = 'You are a helpful assistant';
       const result = await resolveSystemPrompt(inline);
 
-      expect(existsSync).not.toHaveBeenCalled();
+      expect(mockedExistsSync).not.toHaveBeenCalled();
       expect(result).toBe(inline);
     });
 
-    it('should return path as inline if file does not exist', async () => {
-      vi.mocked(existsSync).mockReturnValue(false);
+    test('should return path as inline if file does not exist', async () => {
+      mockedExistsSync.mockReturnValue(false);
 
       const result = await resolveSystemPrompt('missing.md');
 
-      expect(existsSync).toHaveBeenCalledWith('missing.md');
-      expect(readFileSync).not.toHaveBeenCalled();
+      expect(mockedExistsSync).toHaveBeenCalledWith('missing.md');
+      expect(mockedReadFileSync).not.toHaveBeenCalled();
       expect(result).toBe('missing.md');
     });
   });
 
   describe('schema parsing', () => {
-    it('should handle optional fields with ? notation', async () => {
+    test('should handle optional fields with ? notation', async () => {
       const mockContent = `---
 input:
   required: string
@@ -178,7 +184,7 @@ input:
 ---
 Content`;
 
-      vi.mocked(readFileSync).mockReturnValue(mockContent);
+      mockedReadFileSync.mockReturnValue(mockContent);
 
       const result = await loadPromptFile('test.md');
       const schema = result.config.input as Record<string, z.ZodType>;
@@ -193,7 +199,7 @@ Content`;
       expect(() => testSchema.parse({ optional: 'test' })).toThrow();
     });
 
-    it('should handle array notation with []', async () => {
+    test('should handle array notation with []', async () => {
       const mockContent = `---
 input:
   items: string[]
@@ -201,7 +207,7 @@ input:
 ---
 Content`;
 
-      vi.mocked(readFileSync).mockReturnValue(mockContent);
+      mockedReadFileSync.mockReturnValue(mockContent);
 
       const result = await loadPromptFile('test.md');
       const schema = result.config.input as Record<string, z.ZodType>;
@@ -217,7 +223,7 @@ Content`;
       expect(parsed.numbers).toEqual([1, 2, 3]);
     });
 
-    it('should handle schema with default values', async () => {
+    test('should handle schema with default values', async () => {
       const mockContent = `---
 input:
   status:
@@ -229,7 +235,7 @@ input:
 ---
 Content`;
 
-      vi.mocked(readFileSync).mockReturnValue(mockContent);
+      mockedReadFileSync.mockReturnValue(mockContent);
 
       const result = await loadPromptFile('test.md');
       const schema = result.config.input as Record<string, z.ZodType>;

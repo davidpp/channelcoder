@@ -23,5 +23,5 @@ echo -e "\n📈 Coverage report generated at ./coverage/index.html"
 # Run specific test file
 if [ "$1" ]; then
   echo -e "\n🎯 Running specific test: $1"
-  bun vitest run "$1"
+  bun test "$1"
 fi

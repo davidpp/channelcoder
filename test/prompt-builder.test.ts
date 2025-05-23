@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, test, mock, beforeEach } from 'bun:test';
 import { z } from 'zod';
 import type { CC } from '../src/cc';
 import { PromptBuilder } from '../src/prompt-builder';
@@ -6,38 +6,39 @@ import { PromptBuilder } from '../src/prompt-builder';
 describe('PromptBuilder', () => {
   // Mock CC instance
   const mockCC = {
-    run: vi.fn().mockResolvedValue({ success: true }),
-    stream: vi.fn(),
+    run: mock(() => Promise.resolve({ success: true })),
+    stream: mock(() => {}),
   } as unknown as CC;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockCC.run.mockClear();
+    mockCC.stream.mockClear();
   });
 
   describe('template building', () => {
-    it('should build simple template', () => {
+    test('should build simple template', () => {
       const builder = new PromptBuilder('Hello ${0}!', ['World'], mockCC);
       expect(builder.toString()).toBe('Hello World!');
     });
 
-    it('should handle multiple values', () => {
+    test('should handle multiple values', () => {
       const builder = new PromptBuilder('Task ${0} is ${1}', ['FEAT-123', 'complete'], mockCC);
       expect(builder.toString()).toBe('Task FEAT-123 is complete');
     });
 
-    it('should format objects as JSON', () => {
+    test('should format objects as JSON', () => {
       const builder = new PromptBuilder('Data: ${0}', [{ key: 'value' }], mockCC);
       expect(builder.toString()).toContain('"key": "value"');
     });
 
-    it('should handle null/undefined gracefully', () => {
+    test('should handle null/undefined gracefully', () => {
       const builder = new PromptBuilder('Value: ${0}, Other: ${1}', [null, undefined], mockCC);
       expect(builder.toString()).toBe('Value: , Other: ');
     });
   });
 
   describe('fluent API', () => {
-    it('should chain configuration methods', () => {
+    test('should chain configuration methods', () => {
       const builder = new PromptBuilder('Test ${0}', ['prompt'], mockCC)
         .withSystemPrompt('system.md')
         .withTools(['Read', 'Write']);
@@ -46,7 +47,7 @@ describe('PromptBuilder', () => {
       expect(builder).toBeInstanceOf(PromptBuilder);
     });
 
-    it('should set system prompt', async () => {
+    test('should set system prompt', async () => {
       const builder = new PromptBuilder('Test', [], mockCC).withSystemPrompt('path/to/system.md');
 
       await builder.run();
@@ -59,7 +60,7 @@ describe('PromptBuilder', () => {
       );
     });
 
-    it('should set tools', async () => {
+    test('should set tools', async () => {
       const builder = new PromptBuilder('Test', [], mockCC).withTools(['Read', 'Grep']);
 
       await builder.run();
@@ -74,7 +75,7 @@ describe('PromptBuilder', () => {
   });
 
   describe('schema configuration', () => {
-    it('should set input schema', async () => {
+    test('should set input schema', async () => {
       const schema = z.object({ name: z.string() });
       const builder = new PromptBuilder('Test', [], mockCC).withInputSchema(schema);
 
@@ -88,7 +89,7 @@ describe('PromptBuilder', () => {
       );
     });
 
-    it('should set output schema', async () => {
+    test('should set output schema', async () => {
       const schema = z.object({ result: z.string() });
       const builder = new PromptBuilder('Test', [], mockCC).withOutputSchema(schema);
 
@@ -102,7 +103,7 @@ describe('PromptBuilder', () => {
       );
     });
 
-    it('should support withSchema shorthand', async () => {
+    test('should support withSchema shorthand', async () => {
       const schema = z.object({ data: z.string() });
       const builder = new PromptBuilder('Test', [], mockCC).withSchema(schema);
 
@@ -116,7 +117,7 @@ describe('PromptBuilder', () => {
       );
     });
 
-    it('should accept record schema for input', async () => {
+    test('should accept record schema for input', async () => {
       const recordSchema = {
         name: z.string(),
         age: z.number(),
@@ -135,7 +136,7 @@ describe('PromptBuilder', () => {
   });
 
   describe('execution', () => {
-    it('should run prompt through CC', async () => {
+    test('should run prompt through CC', async () => {
       const builder = new PromptBuilder('Execute ${0}', ['this'], mockCC);
       const result = await builder.run();
 
@@ -143,11 +144,11 @@ describe('PromptBuilder', () => {
       expect(result).toEqual({ success: true });
     });
 
-    it('should stream prompt through CC', async () => {
+    test('should stream prompt through CC', async () => {
       const mockStream = async function* () {
         yield { type: 'content' as const, content: 'test', timestamp: Date.now() };
       };
-      mockCC.stream = vi.fn().mockReturnValue(mockStream());
+      mockCC.stream = mock(() => mockStream());
 
       const builder = new PromptBuilder('Stream ${0}', ['this'], mockCC);
       const chunks = [];

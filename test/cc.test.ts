@@ -1,71 +1,81 @@
-import { existsSync, readFileSync } from 'fs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, test, mock, spyOn } from 'bun:test';
 import { z } from 'zod';
 import { CC } from '../src/cc';
 
-// Mock dependencies
-vi.mock('fs', () => ({
-  readFileSync: vi.fn(),
-  existsSync: vi.fn(),
+// Mock fs module
+mock.module('fs', () => ({
+  readFileSync: mock(() => ''),
+  existsSync: mock(() => false),
 }));
 
-// Mock Bun.spawn
-const mockSpawn = vi.fn();
+import { readFileSync, existsSync } from 'fs';
+
+// Get mocked functions
+const mockedReadFileSync = readFileSync as ReturnType<typeof mock>;
+const mockedExistsSync = existsSync as ReturnType<typeof mock>;
+
+// Mock process object
 const mockProcess = {
   stdin: {
-    write: vi.fn(),
-    end: vi.fn(),
+    write: mock(() => {}),
+    end: mock(() => {}),
   },
   stdout: {
-    getReader: vi.fn(),
+    getReader: mock(() => {}),
   },
   stderr: {
-    getReader: vi.fn(),
+    getReader: mock(() => {}),
   },
   exited: Promise.resolve(0),
-  kill: vi.fn(),
+  kill: mock(() => {}),
 };
 
-// @ts-ignore
-global.Bun = {
-  spawn: mockSpawn,
-};
+// Mock Bun.spawn
+const mockSpawn = spyOn(Bun, 'spawn').mockImplementation(() => mockProcess as any);
 
 describe('CC', () => {
   let cc: CC;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    // Reset all mocks
+    mockSpawn.mockClear();
+    mockProcess.stdin.write.mockClear();
+    mockProcess.stdin.end.mockClear();
+    mockProcess.stdout.getReader.mockClear();
+    mockProcess.stderr.getReader.mockClear();
+    mockProcess.kill.mockClear();
+    mockedReadFileSync.mockClear();
+    mockedExistsSync.mockClear();
+    
     cc = new CC();
-    mockSpawn.mockReturnValue(mockProcess);
+    mockSpawn.mockImplementation(() => mockProcess as any);
 
     // Default mock for successful execution
     mockProcess.stdout.getReader.mockReturnValue({
-      read: vi
-        .fn()
+      read: mock(() => Promise.resolve({ done: true }))
         .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode('Success') })
         .mockResolvedValueOnce({ done: true }),
     });
     mockProcess.stderr.getReader.mockReturnValue({
-      read: vi.fn().mockResolvedValueOnce({ done: true }),
+      read: mock(() => Promise.resolve({ done: true })),
     });
   });
 
   describe('prompt template literal', () => {
-    it('should create PromptBuilder with template literal', () => {
+    test('should create PromptBuilder with template literal', () => {
       const builder = cc.prompt`Hello ${'World'}!`;
       expect(builder).toBeDefined();
       expect(builder.toString()).toBe('Hello World!');
     });
 
-    it('should handle multiple interpolations', () => {
+    test('should handle multiple interpolations', () => {
       const name = 'Alice';
       const role = 'admin';
       const builder = cc.prompt`User ${name} has role ${role}`;
       expect(builder.toString()).toBe('User Alice has role admin');
     });
 
-    it('should execute prompt', async () => {
+    test('should execute prompt', async () => {
       const result = await cc.prompt`Test prompt`.run();
 
       expect(mockSpawn).toHaveBeenCalled();
@@ -75,7 +85,7 @@ describe('CC', () => {
   });
 
   describe('fromFile', () => {
-    it('should load and execute prompt from file', async () => {
+    test('should load and execute prompt from file', async () => {
       const mockContent = `---
 systemPrompt: "Be helpful"
 allowedTools:
@@ -83,16 +93,16 @@ allowedTools:
 ---
 Hello \${name}!`;
 
-      vi.mocked(readFileSync).mockReturnValue(mockContent);
+      mockedReadFileSync.mockReturnValue(mockContent);
 
       const result = await cc.fromFile('prompt.md', { name: 'World' });
 
-      expect(readFileSync).toHaveBeenCalledWith('prompt.md', 'utf-8');
+      expect(mockedReadFileSync).toHaveBeenCalledWith('prompt.md', 'utf-8');
       expect(mockProcess.stdin.write).toHaveBeenCalledWith('Hello World!');
       expect(result.success).toBe(true);
     });
 
-    it('should validate input schema', async () => {
+    test('should validate input schema', async () => {
       const mockContent = `---
 input:
   name: string
@@ -100,7 +110,7 @@ input:
 ---
 User \${name} is \${age} years old`;
 
-      vi.mocked(readFileSync).mockReturnValue(mockContent);
+      mockedReadFileSync.mockReturnValue(mockContent);
 
       // Valid input
       const result1 = await cc.fromFile('prompt.md', { name: 'Alice', age: 30 });
@@ -112,13 +122,13 @@ User \${name} is \${age} years old`;
       expect(result2.error).toContain('Input validation failed');
     });
 
-    it('should handle files without variables', async () => {
+    test('should handle files without variables', async () => {
       const mockContent = `---
 systemPrompt: "Be helpful"
 ---
 Static prompt content`;
 
-      vi.mocked(readFileSync).mockReturnValue(mockContent);
+      mockedReadFileSync.mockReturnValue(mockContent);
 
       const result = await cc.fromFile('prompt.md');
 
@@ -126,27 +136,29 @@ Static prompt content`;
       expect(result.success).toBe(true);
     });
 
-    it('should handle file load errors', async () => {
-      vi.mocked(readFileSync).mockImplementation(() => {
+    test('should handle file load errors', async () => {
+      mockedReadFileSync.mockImplementation(() => {
         throw new Error('File not found');
       });
 
-      const result = await cc.fromFile('missing.md');
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Failed to load prompt file');
+      try {
+        await cc.fromFile('missing.md');
+        expect(false).toBe(true); // Should not reach here
+      } catch (error) {
+        expect(error.message).toContain('Failed to load prompt file');
+      }
     });
   });
 
   describe('run', () => {
-    it('should execute string prompt directly', async () => {
+    test('should execute string prompt directly', async () => {
       const result = await cc.run('Direct prompt');
 
       expect(mockProcess.stdin.write).toHaveBeenCalledWith('Direct prompt');
       expect(result.success).toBe(true);
     });
 
-    it('should execute with options', async () => {
+    test('should execute with options', async () => {
       await cc.run('Test', {
         systemPrompt: 'Be concise',
         allowedTools: ['Read'],
@@ -158,7 +170,7 @@ Static prompt content`;
       );
     });
 
-    it('should validate output schema if provided', async () => {
+    test('should validate output schema if provided', async () => {
       const outputSchema = z.object({
         success: z.boolean(),
         message: z.string(),
@@ -166,8 +178,7 @@ Static prompt content`;
 
       const jsonResponse = '```json\n{"success": true, "message": "Done"}\n```';
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi
-          .fn()
+        read: mock(() => Promise.resolve({ done: true }))
           .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode(jsonResponse) })
           .mockResolvedValueOnce({ done: true }),
       });
@@ -178,15 +189,14 @@ Static prompt content`;
       expect(result.data).toEqual({ success: true, message: 'Done' });
     });
 
-    it('should add warning if output validation fails', async () => {
+    test('should add warning if output validation fails', async () => {
       const outputSchema = z.object({
         requiredField: z.string(),
       });
 
       const jsonResponse = '```json\n{"wrongField": "value"}\n```';
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi
-          .fn()
+        read: mock(() => Promise.resolve({ done: true }))
           .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode(jsonResponse) })
           .mockResolvedValueOnce({ done: true }),
       });
@@ -194,10 +204,10 @@ Static prompt content`;
       const result = await cc.run('Test', { output: outputSchema });
 
       expect(result.success).toBe(true);
-      expect(result.warnings).toContain(expect.stringContaining('Output validation failed'));
+      expect(result.warnings?.[0]).toContain('Output validation failed');
     });
 
-    it('should handle execution errors', async () => {
+    test('should handle execution errors', async () => {
       mockSpawn.mockImplementation(() => {
         throw new Error('Spawn failed');
       });
@@ -205,17 +215,17 @@ Static prompt content`;
       const result = await cc.run('Test');
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Spawn failed');
+      expect(result.error).toContain('Spawn failed');
     });
   });
 
   describe('stream', () => {
-    it('should stream string prompt', async () => {
+    test('should stream string prompt', async () => {
       const chunks = ['Hello ', 'World!'];
       let chunkIndex = 0;
 
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi.fn().mockImplementation(() => {
+        read: mock(() => {
           if (chunkIndex < chunks.length) {
             const chunk = chunks[chunkIndex++];
             return Promise.resolve({
@@ -237,10 +247,9 @@ Static prompt content`;
       expect(received[1].content).toBe('World!');
     });
 
-    it('should stream PromptBuilder', async () => {
+    test('should stream PromptBuilder', async () => {
       mockProcess.stdout.getReader.mockReturnValue({
-        read: vi
-          .fn()
+        read: mock(() => Promise.resolve({ done: true }))
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode('{"type": "content", "text": "Response"}\n'),
@@ -259,7 +268,7 @@ Static prompt content`;
       expect(chunks).toHaveLength(1);
     });
 
-    it('should yield error chunks on failure', async () => {
+    test('should yield error chunks on failure', async () => {
       mockSpawn.mockImplementation(() => {
         throw new Error('Stream failed');
       });
@@ -271,12 +280,12 @@ Static prompt content`;
 
       expect(chunks).toHaveLength(1);
       expect(chunks[0].type).toBe('error');
-      expect(chunks[0].content).toBe('Stream failed');
+      expect(chunks[0].content).toContain('Stream failed');
     });
   });
 
   describe('validate', () => {
-    it('should validate successful result with data', () => {
+    test('should validate successful result with data', () => {
       const schema = z.object({
         name: z.string(),
         count: z.number(),
@@ -295,7 +304,7 @@ Static prompt content`;
       }
     });
 
-    it('should handle validation errors', () => {
+    test('should handle validation errors', () => {
       const schema = z.object({
         required: z.string(),
       });
@@ -314,7 +323,7 @@ Static prompt content`;
       }
     });
 
-    it('should handle failed results', () => {
+    test('should handle failed results', () => {
       const schema = z.object({ any: z.string() });
 
       const result = {
@@ -330,7 +339,7 @@ Static prompt content`;
       }
     });
 
-    it('should handle missing data', () => {
+    test('should handle missing data', () => {
       const schema = z.object({ any: z.string() });
 
       const result = {

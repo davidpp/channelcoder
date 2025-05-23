@@ -11,7 +11,7 @@ ChannelCoder is a streamlined SDK and CLI wrapper for Claude Code that enhances 
 ```bash
 # Build and Test
 bun run build          # Compile TypeScript
-bun run test           # Run all tests
+bun run test           # Run all tests with Bun's built-in test runner
 bun run test:watch     # Watch mode for TDD
 bun run typecheck      # Type checking only
 
@@ -25,6 +25,9 @@ bun run format         # Format code with Biome
 bun run dev            # Watch mode for development
 bun run example:quick  # Test SDK examples
 bun run cli:help       # Test CLI functionality
+
+# Run specific test file
+bun test path/to/test.ts
 ```
 
 ## Architecture
@@ -59,10 +62,15 @@ bun run cli:help       # Test CLI functionality
 
 ### Testing Approach
 
+- Tests use Bun's built-in test runner (migrated from Vitest)
 - Unit tests for each module in `test/` directory
 - Integration tests for CLI functionality
 - Use `bun test <filename>` to run specific test files
 - Mock Claude CLI responses in tests to avoid API calls
+- Key test utilities:
+  - `spyOn(object, method)` for spying on methods
+  - `mock(() => {})` for creating mock functions
+  - `mock.module()` for mocking Node modules (limited support)
 
 ### Important Conventions
 

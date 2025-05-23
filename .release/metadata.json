@@ -1,0 +1,12 @@
+{
+  "success": true,
+  "version": "0.1.0",
+  "release_date": "2024-12-21",
+  "summary": "Test framework migration to Bun, CLI integration improvements, and example fixes",
+  "breaking_changes": false,
+  "highlights": ["Migrated to Bun test framework", "Fixed Claude CLI integration", "Resolved example path resolution issues"],
+  "categories_used": ["Added", "Changed", "Fixed"],
+  "total_changes": 6,
+  "commit_count": 5,
+  "files_changed": 15
+}
