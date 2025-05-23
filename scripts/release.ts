@@ -246,6 +246,10 @@ async function executeRelease(dryRun = false, skipBuild = false): Promise<void> 
   }
   
   // Load analysis results
+  if (!existsSync('.release/version.json') || !existsSync('.release/changelog.md') || !existsSync('.release/metadata.json')) {
+    throw new Error('Release analysis files not found. Run "bun run release:analyze" first.');
+  }
+  
   const version: ReleaseVersion = JSON.parse(readFileSync('.release/version.json', 'utf-8'));
   const metadata: ReleaseMetadata = JSON.parse(readFileSync('.release/metadata.json', 'utf-8'));
   const changelogContent = readFileSync('.release/changelog.md', 'utf-8');
@@ -356,7 +360,27 @@ async function publishRelease(otp?: string): Promise<void> {
   if (tagResult.success) {
     const latestTag = tagResult.output.trim();
     console.log(`\n🏷️  Creating GitHub release for ${latestTag}...`);
-    const ghResult = await runCommand(['gh', 'release', 'create', latestTag, '--generate-notes'], 'Create GitHub release');
+    
+    // Try to use the changelog if it exists
+    let releaseNotes = '';
+    try {
+      if (existsSync('.release/changelog.md')) {
+        releaseNotes = readFileSync('.release/changelog.md', 'utf-8');
+        console.log('  Using changelog from .release/changelog.md');
+      }
+    } catch (error) {
+      console.warn('  Could not read .release/changelog.md, will use auto-generated notes');
+    }
+    
+    // Create release with either changelog or auto-generated notes
+    const ghCommand = ['gh', 'release', 'create', latestTag];
+    if (releaseNotes) {
+      ghCommand.push('--notes', releaseNotes);
+    } else {
+      ghCommand.push('--generate-notes');
+    }
+    
+    const ghResult = await runCommand(ghCommand, 'Create GitHub release');
     if (!ghResult.success) {
       console.warn('⚠️  GitHub release failed - you may need to install gh CLI');
     }
@@ -374,6 +398,16 @@ async function publishRelease(otp?: string): Promise<void> {
   }
   
   console.log('\n🎉 Release published!');
+  
+  // Clean up .release directory after successful publish
+  try {
+    if (existsSync('.release')) {
+      await runCommand(['rm', '-rf', '.release'], 'Clean up release artifacts');
+      console.log('🧹 Cleaned up .release directory');
+    }
+  } catch (error) {
+    console.warn('⚠️  Could not clean up .release directory');
+  }
 }
 
 // Commands
