@@ -1,3 +1,4 @@
+import { spawn } from 'child_process';
 import { resolveSystemPrompt } from './loader.js';
 import type { CCOptions, CCResult, PromptConfig, StreamChunk } from './types.js';
 
@@ -5,19 +6,71 @@ import type { CCOptions, CCResult, PromptConfig, StreamChunk } from './types.js'
  * Process manager for Claude Code CLI execution
  */
 export class CCProcess {
-  constructor(private defaultOptions: CCOptions) {}
+  private claudeAvailable?: boolean;
+  private skipAvailabilityCheck = false;
+
+  constructor(private defaultOptions: CCOptions) {
+    // Allow skipping availability check for testing
+    this.skipAvailabilityCheck = process.env.NODE_ENV === 'test' || process.env.BUN_ENV === 'test' || process.env.SKIP_CLAUDE_CHECK === 'true';
+  }
+
+  /**
+   * Reset the Claude availability cache (mainly for testing)
+   */
+  resetClaudeAvailabilityCache() {
+    this.claudeAvailable = undefined;
+  }
+
+  /**
+   * Check if Claude CLI is available
+   */
+  private async checkClaudeAvailable(): Promise<boolean> {
+    // Skip check in test environment
+    if (this.skipAvailabilityCheck) {
+      return true;
+    }
+
+    if (this.claudeAvailable !== undefined) {
+      return this.claudeAvailable;
+    }
+
+    try {
+      const proc = spawn('claude', ['--version'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      
+      const exitCode = await new Promise<number>((resolve) => {
+        proc.on('exit', (code) => resolve(code || 0));
+        proc.on('error', () => resolve(1));
+      });
+      
+      this.claudeAvailable = exitCode === 0;
+      return this.claudeAvailable;
+    } catch {
+      this.claudeAvailable = false;
+      return false;
+    }
+  }
 
   /**
    * Execute a prompt and wait for the result
    */
   async execute(prompt: string, options: CCOptions & PromptConfig): Promise<CCResult> {
+    // Check if Claude CLI is available
+    if (!(await this.checkClaudeAvailable())) {
+      return {
+        success: false,
+        error:
+          'Claude CLI not found. Please install it first: npm install -g @anthropic-ai/claude-code',
+      };
+    }
+
     const cmd = await this.buildCommand(options);
+    const [command, ...args] = cmd;
 
     try {
-      const proc = Bun.spawn(cmd, {
-        stdin: 'pipe',
-        stdout: 'pipe',
-        stderr: 'pipe',
+      const proc = spawn(command, args, {
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
 
       // Write prompt to stdin
@@ -34,39 +87,27 @@ export class CCProcess {
         }, options.timeout);
       }
 
-      // Read stdout
+      // Collect output
       let stdout = '';
-      if (proc.stdout) {
-        const reader = proc.stdout.getReader();
-        const decoder = new TextDecoder();
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            stdout += decoder.decode(value);
-          }
-        } catch (_error) {
-          // Ignore read errors
-        }
-      }
-
-      // Read stderr
       let stderr = '';
+      
+      if (proc.stdout) {
+        proc.stdout.on('data', (chunk) => {
+          stdout += chunk.toString();
+        });
+      }
+      
       if (proc.stderr) {
-        const reader = proc.stderr.getReader();
-        const decoder = new TextDecoder();
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            stderr += decoder.decode(value);
-          }
-        } catch (_error) {
-          // Ignore read errors
-        }
+        proc.stderr.on('data', (chunk) => {
+          stderr += chunk.toString();
+        });
       }
 
-      const exitCode = await proc.exited;
+      // Wait for process to exit
+      const exitCode = await new Promise<number>((resolve, reject) => {
+        proc.on('exit', (code) => resolve(code || 0));
+        proc.on('error', reject);
+      });
 
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -87,6 +128,21 @@ export class CCProcess {
 
       if (exitCode !== 0) {
         result.error = `Process exited with code ${exitCode}`;
+        if (stderr) {
+          result.error += `\nStderr: ${stderr}`;
+        }
+        if (stdout) {
+          // Try to parse error from stdout if it's JSON
+          try {
+            const parsed = JSON.parse(stdout);
+            if (parsed.is_error && parsed.result) {
+              result.error = parsed.result;
+            }
+          } catch {
+            // Not JSON, include raw stdout
+            result.error += `\nStdout: ${stdout}`;
+          }
+        }
       }
 
       // Try to extract JSON if successful
@@ -102,7 +158,7 @@ export class CCProcess {
                 result.data = jsonData.result;
               }
             }
-          } catch (e) {
+          } catch {
             // Fallback to regular parsing
             const parsed = this.parseOutput(stdout);
             if (parsed) {
@@ -134,79 +190,106 @@ export class CCProcess {
    * Stream prompt execution
    */
   async *stream(prompt: string, options: CCOptions & PromptConfig): AsyncIterable<StreamChunk> {
+    // Check if Claude CLI is available
+    if (!(await this.checkClaudeAvailable())) {
+      yield {
+        type: 'error',
+        content:
+          'Claude CLI not found. Please install it first: npm install -g @anthropic-ai/claude-code',
+        timestamp: Date.now(),
+      };
+      return;
+    }
+
     const cmd = await this.buildCommand({
       ...options,
       outputFormat: 'stream-json',
     });
+    const [command, ...args] = cmd;
+
+    const proc = spawn(command, args, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    // Write prompt to stdin
+    if (proc.stdin) {
+      proc.stdin.write(prompt);
+      proc.stdin.end();
+    }
+
+    // Set up timeout
+    let timeoutId: Timer | undefined;
+    if (options.timeout) {
+      timeoutId = setTimeout(() => {
+        proc.kill();
+      }, options.timeout);
+    }
 
     try {
-      const proc = Bun.spawn(cmd, {
-        stdin: 'pipe',
-        stdout: 'pipe',
-        stderr: 'pipe',
-      });
+      // Create a queue for chunks
+      const chunks: StreamChunk[] = [];
+      let done = false;
+      let error: Error | null = null;
 
-      // Write prompt to stdin
-      if (proc.stdin) {
-        proc.stdin.write(prompt);
-        proc.stdin.end();
-      }
-
-      // Set up timeout
-      let timeoutId: Timer | undefined;
-      if (options.timeout) {
-        timeoutId = setTimeout(() => {
-          proc.kill();
-        }, options.timeout);
-      }
-
-      // Stream stdout
+      // Process stdout
       if (proc.stdout) {
-        const reader = proc.stdout.getReader();
-        const decoder = new TextDecoder();
         let buffer = '';
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-
-            // Process complete lines
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              if (line.trim()) {
-                yield this.parseStreamLine(line);
-              }
+        proc.stdout.setEncoding('utf8');
+        
+        proc.stdout.on('data', (chunk: string) => {
+          buffer += chunk;
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          
+          for (const line of lines) {
+            if (line.trim()) {
+              chunks.push(this.parseStreamLine(line));
             }
           }
-
-          // Process any remaining buffer
+        });
+        
+        proc.stdout.on('end', () => {
           if (buffer.trim()) {
-            yield this.parseStreamLine(buffer);
+            chunks.push(this.parseStreamLine(buffer));
           }
-        } catch (error) {
-          yield {
+        });
+      }
+
+      // Handle process events
+      proc.on('error', (err) => {
+        error = err;
+        done = true;
+      });
+      
+      proc.on('exit', (code) => {
+        if (code !== 0 && !error) {
+          chunks.push({
             type: 'error',
-            content: `Stream error: ${error}`,
+            content: `Process exited with code ${code}`,
             timestamp: Date.now(),
-          };
+          });
+        }
+        done = true;
+      });
+
+      // Yield chunks as they become available
+      while (!done || chunks.length > 0) {
+        if (chunks.length > 0) {
+          yield chunks.shift()!;
+        } else if (!done) {
+          // Wait a bit for more chunks
+          await new Promise(resolve => setTimeout(resolve, 10));
         }
       }
 
-      // Handle process exit
-      const exitCode = await proc.exited;
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
 
-      if (exitCode !== 0) {
+      if (error) {
         yield {
           type: 'error',
-          content: `Process exited with code ${exitCode}`,
+          content: `Stream execution failed: ${error.message}`,
           timestamp: Date.now(),
         };
       }

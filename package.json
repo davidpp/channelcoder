@@ -2,17 +2,34 @@
   "name": "channelcoder",
   "version": "1.0.0",
   "description": "A streamlined SDK and CLI for Claude Code - Channel your prompts to Claude",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "type": "module",
   "bin": {
-    "channelcoder": "./src/cli.ts",
-    "cc": "./src/cli.ts"
+    "channelcoder": "./dist/cli.cjs",
+    "cc": "./dist/cli.cjs"
   },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsup && bun run scripts/add-shebang.ts",
+    "build:watch": "tsup --watch",
+    "build:tsc": "tsc",
     "test": "bun test",
     "test:watch": "bun test --watch",
+    "test:compat": "bun test test/node-compat.test.ts",
+    "test:both": "bun scripts/test-both.ts",
     "test:coverage": "bun test --coverage",
     "dev": "tsc --watch",
     "cli": "bun run src/cli.ts",
@@ -47,9 +64,18 @@
     "@types/bun": "latest",
     "@types/node": "^22.15.21",
     "simple-git": "^3.27.0",
+    "tsup": "^8.5.0",
     "typescript": "^5.0.0"
   },
   "peerDependencies": {
     "bun": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "bun": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

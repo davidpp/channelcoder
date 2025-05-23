@@ -155,3 +155,6 @@ generated/
 
 # Release folder
 .release/
+
+# Claude settings
+.claude/settings.local.json

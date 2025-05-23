@@ -6,6 +6,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ChannelCoder is a streamlined SDK and CLI wrapper for Claude Code that enhances prompt engineering capabilities through multi-place variable interpolation, schema validation, and file-based prompts.
 
+## Important: Node.js and Bun Compatibility
+
+**This project MUST maintain compatibility with both Node.js and Bun runtimes.** 
+
+When making changes:
+- Use only Node.js APIs (no Bun-specific APIs like `Bun.spawn`)
+- Test changes in both environments using `bun run test:compat`
+- Ensure the build produces both CJS and ESM formats
+- Keep the CLI shebang as `#!/usr/bin/env node`
+
+The project uses Node.js APIs throughout because Bun aims to be Node.js compatible, making this the simplest approach for dual compatibility.
+
 ## Development Commands
 
 ```bash
@@ -13,6 +25,7 @@ ChannelCoder is a streamlined SDK and CLI wrapper for Claude Code that enhances 
 bun run build          # Compile TypeScript
 bun run test           # Run all tests with Bun's built-in test runner
 bun run test:watch     # Watch mode for TDD
+bun run test:compat    # Run Node.js compatibility tests
 bun run typecheck      # Type checking only
 
 # Code Quality (ALWAYS run before committing)
@@ -25,6 +38,12 @@ bun run format         # Format code with Biome
 bun run dev            # Watch mode for development
 bun run example:quick  # Test SDK examples
 bun run cli:help       # Test CLI functionality
+
+# Release Management
+bun run release:precheck   # Verify release readiness
+bun run release:analyze    # Analyze changes for release
+bun run release:execute    # Execute release process
+bun run release:publish    # Publish to npm
 
 # Run specific test file
 bun test path/to/test.ts
@@ -53,6 +72,11 @@ bun test path/to/test.ts
    - Conditional expressions with JavaScript
    - Template validation
 
+5. **Loader (loader.ts)** - File handling
+   - Loads and parses Markdown files with YAML frontmatter
+   - Validates frontmatter against Zod schemas
+   - Resolves file paths for system prompts
+
 ### Key Patterns
 
 - Variable interpolation: `{varName}` or `{varName || 'default'}`
@@ -79,3 +103,22 @@ bun test path/to/test.ts
 3. **Tool Restrictions**: Validate tool patterns match Claude's expected format
 4. **Template Processing**: Process templates before passing to Claude CLI
 5. **Schema Validation**: Use Zod schemas for input/output validation when provided
+6. **Type Safety**: InterpolationValue type supports nested objects and arrays
+7. **CLI Integration**: All Claude CLI args are passed through, frontmatter maps to specific CLI flags
+
+### Release Process
+
+The release workflow uses `scripts/release.ts` with CC's own prompting system:
+1. `release:precheck` - Ensures clean git state and all checks pass
+2. `release:analyze` - Uses Claude to analyze changes and suggest version
+3. `release:execute` - Updates version, changelog, and creates git tag
+4. `release:publish` - Publishes to npm registry
+
+### Code Quality Tools
+
+- **Biome**: Used for both linting and formatting (configured in biome.json)
+- **TypeScript**: Strict mode enabled, check with `bun run typecheck`
+- **Smart Check**: `scripts/code-check.ts` filters errors to changed files only
+  - Use `--staged` for pre-commit checks
+  - Use `--full` for complete project check
+  - Use `--base=main` to check against specific branch
