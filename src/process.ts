@@ -91,11 +91,33 @@ export class CCProcess {
 
       // Try to extract JSON if successful
       if (result.success && stdout) {
-        const parsed = this.parseOutput(stdout);
-        if (parsed) {
-          result.data = parsed;
+        // When using --output-format json, the entire output is JSON
+        if (options.outputFormat === 'json') {
+          try {
+            const jsonData = JSON.parse(stdout);
+            if (jsonData.type === 'result' && jsonData.result) {
+              result.data = this.parseOutput(jsonData.result);
+              if (!result.data) {
+                // If parseOutput didn't find JSON, use the raw result
+                result.data = jsonData.result;
+              }
+            }
+          } catch (e) {
+            // Fallback to regular parsing
+            const parsed = this.parseOutput(stdout);
+            if (parsed) {
+              result.data = parsed;
+            } else {
+              result.warnings = ['No JSON output found in response'];
+            }
+          }
         } else {
-          result.warnings = ['No JSON output found in response'];
+          const parsed = this.parseOutput(stdout);
+          if (parsed) {
+            result.data = parsed;
+          } else {
+            result.warnings = ['No JSON output found in response'];
+          }
         }
       }
 

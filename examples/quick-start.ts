@@ -11,6 +11,12 @@
 
 import { cc } from '../src/index.js';
 import { z } from 'zod';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the directory of this example file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 async function example1_basicPrompt() {
   console.log('=== Example 1: Basic Prompt ===\n');
@@ -50,7 +56,10 @@ async function example2_withTools() {
 async function example3_fileBasedPrompt() {
   console.log('\n=== Example 3: File-based Prompt ===\n');
 
-  const result = await cc.fromFile('examples/simple-greeting.md', {
+  // Use absolute path relative to this example file
+  const promptPath = join(__dirname, 'simple-greeting.md');
+  
+  const result = await cc.fromFile(promptPath, {
     name: 'Developer',
     greeting: 'Howdy',
   });
@@ -93,11 +102,19 @@ async function example4_withValidation() {
     .withSchema(AnalysisSchema)
     .run();
 
-  if (result.success && result.data) {
-    const validated = cc.validate(result, AnalysisSchema);
-    if (validated.success) {
-      console.log('Analysis:', validated.data);
+  if (result.success) {
+    if (result.data) {
+      const validated = cc.validate(result, AnalysisSchema);
+      if (validated.success) {
+        console.log('Analysis:', validated.data);
+      } else {
+        console.log('Validation failed:', validated.error);
+      }
+    } else {
+      console.log('No data in response. Raw output:', result.stdout);
     }
+  } else {
+    console.log('Request failed:', result.error);
   }
 }
 
