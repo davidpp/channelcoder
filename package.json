@@ -33,6 +33,8 @@
     "release:precheck": "bun run scripts/release.ts precheck",
     "release:analyze": "bun run scripts/release.ts analyze",
     "release:run": "bun run scripts/release.ts run",
+    "release:execute": "bun run scripts/release.ts execute",
+    "release:publish": "bun run scripts/release.ts publish",
     "release:full": "bun run scripts/release.ts full"
   },
   "dependencies": {
