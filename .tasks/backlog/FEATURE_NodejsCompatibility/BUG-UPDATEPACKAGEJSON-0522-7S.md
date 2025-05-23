@@ -2,7 +2,7 @@
 id = "BUG-UPDATEPACKAGEJSON-0522-7S"
 title = "Update package.json bin entries to compiled JS"
 type = "🐞 Bug"
-status = "🟡 To Do"
+status = "🟢 Done"
 priority = "🔼 High"
 created_date = "2025-05-23"
 updated_date = "2025-05-23"

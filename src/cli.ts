@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
@@ -313,6 +313,14 @@ async function main() {
 }
 
 // Run CLI
-if (import.meta.main) {
-  main();
+// Check if this file is being run directly
+const isMainModule = import.meta.url === `file://${process.argv[1]}` || 
+                    process.argv[1]?.endsWith('/cli.cjs') ||
+                    process.argv[1]?.endsWith('/cli.mjs');
+
+if (isMainModule) {
+  main().catch(error => {
+    console.error('❌ Fatal error:', error);
+    process.exit(1);
+  });
 }

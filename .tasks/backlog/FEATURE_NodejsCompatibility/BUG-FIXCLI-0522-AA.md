@@ -2,7 +2,7 @@
 id = "BUG-FIXCLI-0522-AA"
 title = "Fix CLI shebang for Node.js compatibility"
 type = "🐞 Bug"
-status = "🟡 To Do"
+status = "🟢 Done"
 priority = "🔼 High"
 created_date = "2025-05-23"
 updated_date = "2025-05-23"

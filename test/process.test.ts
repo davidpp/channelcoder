@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
+import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { EventEmitter } from 'events';
 import { CCProcess } from '../src/process';
 import type { CCOptions, PromptConfig } from '../src/types';
 
@@ -8,47 +9,70 @@ mock.module('fs', () => ({
   readFileSync: mock(() => ''),
 }));
 
+// Mock child_process module
+let mockSpawn: ReturnType<typeof mock>;
+let mockChildProcess: any;
+
+mock.module('child_process', () => {
+  mockSpawn = mock(() => mockChildProcess);
+  return {
+    spawn: mockSpawn,
+  };
+});
+
 import { existsSync, readFileSync } from 'fs';
 
 // Get mocked functions
 const mockedExistsSync = existsSync as ReturnType<typeof mock>;
 const mockedReadFileSync = readFileSync as ReturnType<typeof mock>;
 
-// Mock process object
-const mockProcess = {
-  stdin: {
-    write: mock(() => {}),
+// Create a mock child process that extends EventEmitter
+class MockChildProcess extends EventEmitter {
+  stdin = {
+    write: mock(() => true),
     end: mock(() => {}),
-  },
-  stdout: {
-    getReader: mock(() => {}),
-  },
-  stderr: {
-    getReader: mock(() => {}),
-  },
-  exited: Promise.resolve(0),
-  kill: mock(() => {}),
-};
+  };
+  stdout = new EventEmitter();
+  stderr = new EventEmitter();
+  kill = mock(() => true);
+  
+  constructor(public exitCode: number = 0) {
+    super();
+  }
+  
+  // Helper to simulate process exit
+  simulateExit() {
+    this.emit('exit', this.exitCode);
+  }
+  
+  // Helper to simulate stdout data
+  simulateStdout(data: string) {
+    this.stdout.emit('data', Buffer.from(data));
+  }
+  
+  // Helper to simulate stderr data
+  simulateStderr(data: string) {
+    this.stderr.emit('data', Buffer.from(data));
+  }
+}
 
-// Mock Bun.spawn
-const mockSpawn = spyOn(Bun, 'spawn').mockImplementation(() => mockProcess as any);
+// Default mock process
+let mockProcess: MockChildProcess;
 
 describe('CCProcess', () => {
   let process: CCProcess;
 
   beforeEach(() => {
     // Reset all mocks
-    mockSpawn.mockClear();
-    mockProcess.stdin.write.mockClear();
-    mockProcess.stdin.end.mockClear();
-    mockProcess.stdout.getReader.mockClear();
-    mockProcess.stderr.getReader.mockClear();
-    mockProcess.kill.mockClear();
+    if (mockSpawn) mockSpawn.mockClear();
     mockedExistsSync.mockClear();
     mockedReadFileSync.mockClear();
 
+    // Create fresh mock process for each test
+    mockProcess = new MockChildProcess();
+    mockChildProcess = mockProcess;
+
     process = new CCProcess({ verbose: false });
-    mockSpawn.mockImplementation(() => mockProcess as any);
   });
 
   describe('execute', () => {
@@ -129,11 +153,14 @@ describe('CCProcess', () => {
     });
 
     test('should handle process errors', async () => {
-      mockProcess.exited = Promise.resolve(1);
-      mockProcess.stdout.getReader.mockReturnValue({
+      // Create a mock process with exit code 1
+      const errorProcess = createMockProcess(1);
+      mockSpawn.mockImplementation(() => errorProcess as any);
+
+      errorProcess.stdout.getReader.mockReturnValue({
         read: mock(() => Promise.resolve({ done: true })),
       });
-      mockProcess.stderr.getReader.mockReturnValue({
+      errorProcess.stderr.getReader.mockReturnValue({
         read: mock(() => Promise.resolve({ done: true }))
           .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode('Error occurred') })
           .mockResolvedValueOnce({ done: true }),
@@ -179,6 +206,7 @@ describe('CCProcess', () => {
     );
 
     test('should handle spawn errors', async () => {
+      // Claude is already marked as available, so version check won't run
       mockSpawn.mockImplementation(() => {
         throw new Error('Spawn failed');
       });
@@ -187,6 +215,30 @@ describe('CCProcess', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Process execution failed: Error: Spawn failed');
+    });
+
+    test('should detect when Claude CLI is not available', async () => {
+      // Create a new process instance with availability check enabled
+      const testProcess = new CCProcess({ verbose: false });
+      (testProcess as any).skipAvailabilityCheck = false;
+
+      // Create separate mock processes for this test
+      const versionCheckProcess = createMockProcess(1);
+      const regularProcess = createMockProcess();
+
+      mockSpawn.mockImplementation((cmd) => {
+        if (cmd[0] === 'claude' && cmd[1] === '--version') {
+          return versionCheckProcess as any;
+        }
+        return regularProcess as any;
+      });
+
+      const result = await testProcess.execute('Test', {});
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe(
+        'Claude CLI not found. Please install it first: npm install -g @anthropic-ai/claude-code'
+      );
     });
   });
 
@@ -297,11 +349,14 @@ describe('CCProcess', () => {
     });
 
     test('should yield error on process failure', async () => {
-      mockProcess.exited = Promise.resolve(1);
-      mockProcess.stdout.getReader.mockReturnValue({
+      // Create a mock process with exit code 1
+      const errorProcess = createMockProcess(1);
+      mockSpawn.mockImplementation(() => errorProcess as any);
+
+      errorProcess.stdout.getReader.mockReturnValue({
         read: mock(() => Promise.resolve({ done: true })),
       });
-      mockProcess.stderr.getReader.mockReturnValue({
+      errorProcess.stderr.getReader.mockReturnValue({
         read: mock(() => Promise.resolve({ done: true })),
       });
 

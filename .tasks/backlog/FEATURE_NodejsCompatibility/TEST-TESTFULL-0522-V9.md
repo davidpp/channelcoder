@@ -2,7 +2,7 @@
 id = "TEST-TESTFULL-0522-V9"
 title = "Test full package with Node.js"
 type = "🧪 Test"
-status = "🟡 To Do"
+status = "🟢 Done"
 priority = "🔼 High"
 created_date = "2025-05-23"
 updated_date = "2025-05-23"

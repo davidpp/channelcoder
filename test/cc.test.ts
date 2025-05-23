@@ -47,8 +47,22 @@ describe('CC', () => {
     mockedReadFileSync.mockClear();
     mockedExistsSync.mockClear();
 
+    // Mock spawn to handle claude --version check and actual command execution
+    mockSpawn.mockImplementation((cmd) => {
+      // Handle claude --version check
+      if (Array.isArray(cmd) && cmd[0] === 'claude' && cmd[1] === '--version') {
+        return {
+          stdout: { getReader: () => ({ read: async () => ({ done: true }) }) },
+          stderr: { getReader: () => ({ read: async () => ({ done: true }) }) },
+          exited: Promise.resolve(0),
+          kill: () => {},
+        } as any;
+      }
+      // Return normal mock process for actual commands
+      return mockProcess as any;
+    });
+
     cc = new CC();
-    mockSpawn.mockImplementation(() => mockProcess as any);
 
     // Default mock for successful execution
     mockProcess.stdout.getReader.mockReturnValue({
