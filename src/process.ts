@@ -223,17 +223,46 @@ export class CCProcess {
    * Build command arguments for Claude Code CLI
    */
   private async buildCommand(options: CCOptions & PromptConfig): Promise<string[]> {
-    const cmd = ['claude', '-p'];
+    const cmd = ['claude'];
 
-    // Add system prompt if specified
+    // Conversation options (must come before -p)
+    if (options.resume) {
+      cmd.push('--resume', options.resume);
+    } else if (options.continue) {
+      cmd.push('--continue');
+    } else {
+      // Only add -p flag if not resuming/continuing
+      cmd.push('-p');
+    }
+
+    // System prompt options
     if (options.systemPrompt) {
       const resolved = await resolveSystemPrompt(options.systemPrompt);
       cmd.push('--system-prompt', resolved);
     }
+    if (options.appendSystemPrompt) {
+      cmd.push('--append-system-prompt', options.appendSystemPrompt);
+    }
 
-    // Add allowed tools - join with comma like the working version
+    // Tool options
     if (options.allowedTools && options.allowedTools.length > 0) {
       cmd.push('--allowedTools', options.allowedTools.join(','));
+    }
+    if (options.disallowedTools && options.disallowedTools.length > 0) {
+      cmd.push('--disallowedTools', options.disallowedTools.join(','));
+    }
+
+    // MCP options
+    if (options.mcpConfig) {
+      cmd.push('--mcp-config', options.mcpConfig);
+    }
+    if (options.permissionPromptTool) {
+      cmd.push('--permission-prompt-tool', options.permissionPromptTool);
+    }
+
+    // Other options
+    if (options.maxTurns !== undefined) {
+      cmd.push('--max-turns', String(options.maxTurns));
     }
 
     // Add output format

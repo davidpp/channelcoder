@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { parseArgs } from 'util';
 import { cc } from './index.js';
-import type { InterpolationData, RunOptions } from './types.js';
+import type { InterpolationData, RunOptions, CCOptions } from './types.js';
 
 /**
  * CC CLI - Command line interface for CC SDK
@@ -38,6 +38,13 @@ Options:
   -d, --data <key=value>   Data for interpolation (can be used multiple times)
   -s, --system <prompt>    System prompt (inline text or .md file path)
   -t, --tools <tools>      Allowed tools (space or comma-separated, e.g. "Read Write" or "Bash(git:*)")
+  --disallowed-tools <tools>  Disallowed tools (comma-separated)
+  --append-system <text>   Append to system prompt
+  --mcp-config <file>      Load MCP servers from JSON file
+  --permission-tool <tool> MCP tool for permission prompts
+  -r, --resume <id>        Resume conversation by session ID
+  -c, --continue           Continue most recent conversation
+  --max-turns <n>          Limit agentic turns
   --stream                 Stream output
   -v, --verbose            Verbose output
   --json                   Output JSON only (no formatting)
@@ -102,7 +109,14 @@ async function main() {
       data: { type: 'string', short: 'd', multiple: true },
       'data-stdin': { type: 'boolean' },
       system: { type: 'string', short: 's' },
+      'append-system': { type: 'string' },
       tools: { type: 'string', short: 't' },
+      'disallowed-tools': { type: 'string' },
+      'mcp-config': { type: 'string' },
+      'permission-tool': { type: 'string' },
+      resume: { type: 'string', short: 'r' },
+      continue: { type: 'boolean', short: 'c' },
+      'max-turns': { type: 'string' },
       stream: { type: 'boolean' },
       verbose: { type: 'boolean', short: 'v' },
       json: { type: 'boolean' },
@@ -139,12 +153,17 @@ async function main() {
     }
 
     // Build options
-    const options: Partial<RunOptions> = {};
+    const options: Partial<RunOptions & CCOptions> = {};
 
+    // System prompt options
     if (values.system) {
       options.systemPrompt = values.system;
     }
+    if (values['append-system']) {
+      options.appendSystemPrompt = values['append-system'];
+    }
 
+    // Tool options
     if (values.tools) {
       // Handle both comma and space separated tools
       // If contains comma, split by comma; otherwise split by space
@@ -153,6 +172,33 @@ async function main() {
       } else {
         options.allowedTools = values.tools.split(/\s+/).filter((t) => t);
       }
+    }
+    if (values['disallowed-tools']) {
+      const tools = values['disallowed-tools'];
+      if (tools.includes(',')) {
+        options.disallowedTools = tools.split(',').map((t) => t.trim());
+      } else {
+        options.disallowedTools = tools.split(/\s+/).filter((t) => t);
+      }
+    }
+
+    // MCP options
+    if (values['mcp-config']) {
+      options.mcpConfig = values['mcp-config'];
+    }
+    if (values['permission-tool']) {
+      options.permissionPromptTool = values['permission-tool'];
+    }
+
+    // Conversation options
+    if (values.resume) {
+      options.resume = values.resume;
+    }
+    if (values.continue) {
+      options.continue = true;
+    }
+    if (values['max-turns']) {
+      options.maxTurns = parseInt(values['max-turns'], 10);
     }
 
     if (values.verbose) {

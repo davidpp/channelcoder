@@ -3,7 +3,7 @@
   "new_version": "0.1.0",
   "bump_type": "minor",
   "confidence": "high",
-  "reasoning": "Multiple significant improvements: migrated test framework from Vitest to Bun, fixed Claude CLI integration, resolved path resolution issues in examples, and added release automation scripts",
+  "reasoning": "Initial stable release with core SDK features, Zod validation, Bun test migration, and critical path resolution fixes",
   "breaking_changes": false,
-  "notable_features": ["Bun test framework migration", "Claude CLI integration fixes", "Example path resolution fixes", "Release automation"]
+  "notable_features": ["Zod schema validation", "Bun test runner migration", "Path resolution fixes", "Claude CLI integration improvements"]
 }

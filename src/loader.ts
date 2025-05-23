@@ -8,7 +8,11 @@ import type { PromptConfig } from './types.js';
  */
 export const FrontmatterSchema = z.object({
   systemPrompt: z.string().optional(),
+  appendSystemPrompt: z.string().optional(),
   allowedTools: z.array(z.string()).optional(),
+  disallowedTools: z.array(z.string()).optional(),
+  mcpConfig: z.string().optional(),
+  permissionPromptTool: z.string().optional(),
   input: z.any().optional(), // Processed separately as it can be various formats
   output: z.any().optional(), // Processed separately as it can be various formats
 }).strict(); // Disallow unknown keys
@@ -54,8 +58,20 @@ async function processConfig(data: Record<string, unknown>): Promise<PromptConfi
   if (validated.systemPrompt !== undefined) {
     config.systemPrompt = validated.systemPrompt;
   }
+  if (validated.appendSystemPrompt !== undefined) {
+    config.appendSystemPrompt = validated.appendSystemPrompt;
+  }
   if (validated.allowedTools !== undefined) {
     config.allowedTools = validated.allowedTools;
+  }
+  if (validated.disallowedTools !== undefined) {
+    config.disallowedTools = validated.disallowedTools;
+  }
+  if (validated.mcpConfig !== undefined) {
+    config.mcpConfig = validated.mcpConfig;
+  }
+  if (validated.permissionPromptTool !== undefined) {
+    config.permissionPromptTool = validated.permissionPromptTool;
   }
 
   // Process input schema

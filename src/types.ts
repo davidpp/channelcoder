@@ -25,8 +25,16 @@ export interface PromptConfig {
   // System prompt (inline string or file path)
   systemPrompt?: string;
 
-  // Claude CLI options
+  // Append to system prompt (only with --print)
+  appendSystemPrompt?: string;
+
+  // Claude CLI tool options
   allowedTools?: string[];
+  disallowedTools?: string[];
+
+  // MCP configuration
+  mcpConfig?: string;
+  permissionPromptTool?: string;
 }
 
 /**
@@ -41,6 +49,11 @@ export interface CCOptions {
 
   // Default output format
   outputFormat?: 'json' | 'stream-json' | 'text';
+
+  // Conversation options
+  resume?: string;        // Resume by session ID
+  continue?: boolean;     // Continue most recent conversation
+  maxTurns?: number;      // Limit agentic turns in non-interactive mode
 }
 
 /**

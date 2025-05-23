@@ -111,6 +111,13 @@ Options:
   -d, --data <key=value>   Data for interpolation (repeatable)
   -s, --system <prompt>    System prompt (text or .md file)
   -t, --tools <tools>      Allowed tools (e.g., "Read Write")
+  --disallowed-tools       Disallowed tools (comma-separated)
+  --append-system <text>   Append to system prompt
+  --mcp-config <file>      Load MCP servers from JSON file
+  --permission-tool <tool> MCP tool for permission prompts
+  -r, --resume <id>        Resume conversation by session ID
+  -c, --continue           Continue most recent conversation
+  --max-turns <n>          Limit agentic turns
   --stream                 Stream output
   --json                   JSON output only
   -v, --verbose            Verbose output
@@ -129,6 +136,9 @@ systemPrompt: "You are a helpful coding assistant"
 # or
 systemPrompt: "./system-prompts/analyst.md"
 
+# Append to system prompt
+appendSystemPrompt: "Always explain your reasoning"
+
 # Allowed tools - Restrict which tools Claude can use
 # These are passed to Claude CLI's --allowedTools flag
 allowedTools:
@@ -140,6 +150,15 @@ allowedTools:
   - "Bash(npm:test)"         # Specific: only npm test
   - "Grep"                   # Search file contents
   - "WebSearch"              # Search the web
+
+# Disallowed tools - Prevent specific tools
+disallowedTools:
+  - "Bash(rm:*)"             # No rm commands
+  - "Bash(git:push)"         # No git push
+
+# MCP (Model Context Protocol) configuration
+mcpConfig: "./mcp-servers.json"
+permissionPromptTool: "mcp__auth__prompt"
 
 # Input schema - Validates variables before interpolation
 input:
@@ -185,7 +204,11 @@ const result = FrontmatterSchema.safeParse({
 // TypeScript type for frontmatter
 const config: Frontmatter = {
   systemPrompt: "Assistant prompt",
+  appendSystemPrompt: "Be concise",
   allowedTools: ["Read", "Write"],
+  disallowedTools: ["Bash(rm:*)"],
+  mcpConfig: "./mcp-servers.json",
+  permissionPromptTool: "mcp__auth__prompt",
   input: { name: "string" },
   output: { success: "boolean" }
 };
@@ -278,6 +301,21 @@ cc -p "Find files containing ${pattern}" \
 cc -p "Write a haiku about ${topic}" \
    -d topic="coding" \
    --stream
+
+# Resume conversation
+cc --resume abc123 -p "Continue with the implementation"
+
+# Continue last conversation
+cc --continue -p "What about error handling?"
+
+# Limit agentic turns
+cc analyze.md --max-turns 3
+
+# MCP configuration
+cc query.md --mcp-config ./servers.json
+
+# Disallow dangerous tools
+cc cleanup.md --disallowed-tools "Bash(rm:*),Bash(git:push)"
 ```
 
 #### Complex Data
