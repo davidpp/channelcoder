@@ -7,8 +7,7 @@
   "types": "./dist/index.d.ts",
   "type": "module",
   "bin": {
-    "channelcoder": "./dist/cli.cjs",
-    "cc": "./dist/cli.cjs"
+    "channelcoder": "./dist/cli.cjs"
   },
   "exports": {
     ".": {
@@ -17,11 +16,7 @@
       "import": "./dist/index.mjs"
     }
   },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
+  "files": ["dist", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsup && bun run scripts/add-shebang.ts",
     "build:watch": "tsup --watch",

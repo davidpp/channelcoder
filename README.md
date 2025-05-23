@@ -23,14 +23,11 @@ npm install channelcoder
 # Run a prompt file
 channelcoder prompts/analyze.md -d taskId=FEAT-123
 
-# Or use the short alias
-cc prompts/analyze.md -d taskId=FEAT-123
-
 # Inline prompt
-cc -p "Summarize this: ${text}" -d text="Hello world"
+channelcoder -p "Summarize this: {text}" -d text="Hello world"
 
 # Stream responses
-cc -p "Tell me a story" --stream
+channelcoder -p "Tell me a story" --stream
 ```
 
 ### SDK Usage
@@ -104,7 +101,7 @@ const result = await cc.prompt`Generate ${type}`
 ```bash
 channelcoder [prompt-file] [options]
 # or
-cc [prompt-file] [options]
+channelcoder [prompt-file] [options]
 
 Options:
   -p, --prompt <text>      Inline prompt instead of file
@@ -283,46 +280,46 @@ ${details ? "Provide detailed breakdown." : "Summary only."}
 Run it:
 
 ```bash
-cc analyze.md -d task="Review PR" -d details=true
+channelcoder analyze.md -d task="Review PR" -d details=true
 ```
 
 #### Inline Prompts
 
 ```bash
 # Simple
-cc -p "Explain ${concept}" -d concept="quantum computing"
+channelcoder -p "Explain {concept}" -d concept="quantum computing"
 
 # With tools
-cc -p "Find files containing ${pattern}" \
+channelcoder -p "Find files containing {pattern}" \
    -d pattern="TODO" \
    -t "Read Grep"
 
 # Streaming
-cc -p "Write a haiku about ${topic}" \
+channelcoder -p "Write a haiku about {topic}" \
    -d topic="coding" \
    --stream
 
 # Resume conversation
-cc --resume abc123 -p "Continue with the implementation"
+channelcoder --resume abc123 -p "Continue with the implementation"
 
 # Continue last conversation
-cc --continue -p "What about error handling?"
+channelcoder --continue -p "What about error handling?"
 
 # Limit agentic turns
-cc analyze.md --max-turns 3
+channelcoder analyze.md --max-turns 3
 
 # MCP configuration
-cc query.md --mcp-config ./servers.json
+channelcoder query.md --mcp-config ./servers.json
 
 # Disallow dangerous tools
-cc cleanup.md --disallowed-tools "Bash(rm:*),Bash(git:push)"
+channelcoder cleanup.md --disallowed-tools "Bash(rm:*),Bash(git:push)"
 ```
 
 #### Complex Data
 
 ```bash
 # Arrays and objects via JSON
-cc -p "Process items: ${items}" \
+channelcoder -p "Process items: {items}" \
    -d 'items=["apple","banana","orange"]'
 
 # Via stdin
@@ -437,7 +434,7 @@ Tags: ${tags}
 
 Allow specific command patterns:
 ```bash
-cc prompt.md -t "Bash(git:*) Read Write"
+channelcoder prompt.md -t "Bash(git:*) Read Write"
 ```
 
 ### 2. Conditional Content
@@ -455,10 +452,10 @@ cc.prompt`
 Can be inline or file paths:
 ```bash
 # Inline
-cc -p "..." -s "Be concise"
+channelcoder -p "..." -s "Be concise"
 
 # From file
-cc -p "..." -s "prompts/systems/expert.md"
+channelcoder -p "..." -s "prompts/systems/expert.md"
 ```
 
 ### 4. JSON Output
