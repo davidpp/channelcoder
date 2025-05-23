@@ -209,9 +209,9 @@ export class CCProcess {
       cmd.push('--system-prompt', resolved);
     }
 
-    // Add allowed tools
+    // Add allowed tools - join with comma like the working version
     if (options.allowedTools && options.allowedTools.length > 0) {
-      cmd.push('--allowedTools', options.allowedTools.join(' '));
+      cmd.push('--allowedTools', options.allowedTools.join(','));
     }
 
     // Add output format

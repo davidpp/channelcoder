@@ -4,9 +4,12 @@
  * Quick Start Examples for ChannelCoder
  *
  * Simple examples to get you started with the SDK
+ * 
+ * Note: These examples require Claude CLI to be installed and configured.
+ * Without it, they will show the structure but fail with API errors.
  */
 
-import { cc } from 'channelcoder';
+import { cc } from '../src/index.js';
 import { z } from 'zod';
 
 async function example1_basicPrompt() {
@@ -21,6 +24,9 @@ async function example1_basicPrompt() {
 
   if (result.success) {
     console.log('Response:', result.stdout || result.data);
+  } else {
+    console.log('Error:', result.error);
+    console.log('Note: This example requires Claude CLI to be installed and configured.');
   }
 }
 
@@ -113,9 +119,29 @@ async function example5_streaming() {
   console.log('\n');
 }
 
+// Check if Claude CLI is available
+async function checkClaudeCLI() {
+  try {
+    const proc = Bun.spawn(['claude', '--version'], { stdout: 'pipe', stderr: 'pipe' });
+    const exitCode = await proc.exited;
+    return exitCode === 0;
+  } catch (error) {
+    return false;
+  }
+}
+
 // Run all examples
 async function main() {
   console.log('🚀 ChannelCoder Quick Start Examples\n');
+
+  // Check if Claude CLI is available
+  const hasClaudeCLI = await checkClaudeCLI();
+  if (!hasClaudeCLI) {
+    console.log('⚠️  Warning: Claude CLI not found or not configured.\n');
+    console.log('These examples require Claude CLI to be installed and configured.');
+    console.log('Visit: https://docs.anthropic.com/en/docs/claude-code/cli-usage\n');
+    console.log('Running examples anyway (they will show errors)...\n');
+  }
 
   try {
     await example1_basicPrompt();

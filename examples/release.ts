@@ -9,7 +9,7 @@
 
 import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
-import { cc } from 'channelcoder';
+import { cc } from '../src/index.js';
 import { z } from 'zod';
 
 // Define the expected output schema

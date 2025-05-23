@@ -7,7 +7,7 @@
  * tracing through codebases to find root causes of errors.
  */
 
-import { cc } from 'channelcoder';
+import { cc } from '../src/index.js';
 import { z } from 'zod';
 
 // Define the analysis output schema

@@ -2,6 +2,12 @@
 
 This directory contains practical examples demonstrating ChannelCoder's features.
 
+## Prerequisites
+
+All examples require Claude CLI to be installed and configured:
+- Install: https://docs.anthropic.com/en/docs/claude-code/cli-usage
+- The examples will check for Claude CLI and warn if it's not available
+
 ## Release Analysis Example
 
 A real-world example showing how to automate release version analysis using git history.
