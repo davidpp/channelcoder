@@ -1,0 +1,41 @@
+{
+  "name": "channelcoder",
+  "version": "0.0.1",
+  "description": "A streamlined SDK and CLI for Claude Code - Channel your prompts to Claude",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "channelcoder": "./src/cli.ts",
+    "cc": "./src/cli.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "test:watch": "vitest --watch",
+    "dev": "tsc --watch",
+    "cli": "bun run src/cli.ts",
+    "cli:help": "bun run src/cli.ts --help",
+    "example:quick": "bun run examples/quick-start.ts",
+    "example:release": "bun run examples/release.ts",
+    "example:debug": "bun run examples/root-cause-analysis.ts",
+    "link:local": "bun link",
+    "unlink:local": "bun unlink"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@vitest/coverage-v8": "^1.0.0",
+    "@vitest/ui": "^1.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "peerDependencies": {
+    "bun": ">=1.0.0"
+  }
+}
