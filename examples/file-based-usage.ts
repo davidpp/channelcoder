@@ -1,6 +1,12 @@
 #!/usr/bin/env bun
 
 import { cc } from '../src/index.js';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the directory of this example file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Example: Using file-based prompts with CC SDK
@@ -11,7 +17,8 @@ async function main() {
 
   try {
     // Load and execute prompt from file
-    const result = await cc.fromFile('examples/analyze-task.md', {
+    const promptPath = join(__dirname, 'analyze-task.md');
+    const result = await cc.fromFile(promptPath, {
       taskId: 'FEAT-AUTH-001',
       context: 'Implement user authentication with JWT tokens and refresh token support',
       includeDetails: true,
@@ -36,7 +43,7 @@ async function main() {
 
     // Example with validation error (missing required field)
     console.log('\n\nTesting validation...');
-    const invalidResult = await cc.fromFile('examples/analyze-task.md', {
+    const invalidResult = await cc.fromFile(promptPath, {
       // Missing required 'taskId' field
       context: 'Some context',
     });
