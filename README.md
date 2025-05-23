@@ -169,6 +169,28 @@ Your prompt content here...
 - `verbose` - Use `--verbose` flag or `cc.run(prompt, { verbose: true })`
 - `timeout` - SDK only: `cc.run(prompt, { timeout: 30000 })`
 
+#### Frontmatter Validation
+
+The frontmatter is validated using a Zod schema. Invalid keys will cause an error:
+
+```typescript
+import { FrontmatterSchema, type Frontmatter } from 'channelcoder';
+
+// Validate frontmatter programmatically
+const result = FrontmatterSchema.safeParse({
+  systemPrompt: "Valid",
+  temperature: 0.7  // Error: unknown key
+});
+
+// TypeScript type for frontmatter
+const config: Frontmatter = {
+  systemPrompt: "Assistant prompt",
+  allowedTools: ["Read", "Write"],
+  input: { name: "string" },
+  output: { success: "boolean" }
+};
+```
+
 #### Schema Definition Formats
 
 Schemas can be defined in multiple ways:

@@ -4,6 +4,18 @@ import { z } from 'zod';
 import type { PromptConfig } from './types.js';
 
 /**
+ * Zod schema for frontmatter validation
+ */
+export const FrontmatterSchema = z.object({
+  systemPrompt: z.string().optional(),
+  allowedTools: z.array(z.string()).optional(),
+  input: z.any().optional(), // Processed separately as it can be various formats
+  output: z.any().optional(), // Processed separately as it can be various formats
+}).strict(); // Disallow unknown keys
+
+export type Frontmatter = z.infer<typeof FrontmatterSchema>;
+
+/**
  * Load a prompt file with frontmatter
  */
 export async function loadPromptFile(
@@ -29,22 +41,31 @@ export async function loadPromptFile(
  * Process configuration from frontmatter
  */
 async function processConfig(data: Record<string, unknown>): Promise<PromptConfig> {
+  // Validate frontmatter
+  const parsed = FrontmatterSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error(`Invalid frontmatter: ${parsed.error.message}`);
+  }
+
+  const validated = parsed.data;
   const config: PromptConfig = {};
 
-  // Copy basic options
-  if (data.systemPrompt !== undefined) config.systemPrompt = String(data.systemPrompt);
-  if (data.allowedTools !== undefined && Array.isArray(data.allowedTools)) {
-    config.allowedTools = data.allowedTools.map(String);
+  // Copy validated options
+  if (validated.systemPrompt !== undefined) {
+    config.systemPrompt = validated.systemPrompt;
+  }
+  if (validated.allowedTools !== undefined) {
+    config.allowedTools = validated.allowedTools;
   }
 
   // Process input schema
-  if (data.input) {
-    config.input = parseSchema(data.input, 'input');
+  if (validated.input) {
+    config.input = parseSchema(validated.input, 'input');
   }
 
   // Process output schema
-  if (data.output) {
-    config.output = parseSchema(data.output, 'output');
+  if (validated.output) {
+    config.output = parseSchema(validated.output, 'output');
   }
 
   return config;

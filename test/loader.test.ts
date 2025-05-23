@@ -132,6 +132,17 @@ Content`;
       expect(result.config).toEqual({});
       expect(result.content).toBe('Just content, no frontmatter');
     });
+
+    test('should reject invalid frontmatter keys', async () => {
+      mockedReadFileSync.mockReturnValue(`---
+invalidKey: "This should fail"
+temperature: 0.7
+systemPrompt: "Valid prompt"
+---
+Content`);
+
+      await expect(loadPromptFile('test.md')).rejects.toThrow('Invalid frontmatter');
+    });
   });
 
   describe('resolveSystemPrompt', () => {
