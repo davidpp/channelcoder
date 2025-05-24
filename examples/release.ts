@@ -16,7 +16,7 @@ import { z } from 'zod';
 const ReleaseAnalysisSchema = z.object({
   success: z.boolean(),
   recommendedVersion: z.string(),
-  changeType: z.enum(['major', 'minor', 'patch']),
+  changeType: z.enum(['major', 'minor', 'patch', 'none']),
   confidence: z.enum(['high', 'medium', 'low']),
   reasoning: z.string(),
   breakingChanges: z.boolean(),
@@ -118,7 +118,7 @@ async function main() {
     const analysis = validation.data;
     console.log('✅ Analysis Complete!\n');
     console.log(`📌 Recommended Version: ${analysis.recommendedVersion}`);
-    console.log(`📊 Change Type: ${analysis.changeType.toUpperCase()}`);
+    console.log(`📊 Change Type: ${analysis.changeType === 'none' ? 'NO CHANGES' : analysis.changeType.toUpperCase()}`);
     console.log(`🎯 Confidence: ${analysis.confidence.toUpperCase()}`);
     console.log(`💥 Breaking Changes: ${analysis.breakingChanges ? 'YES ⚠️' : 'No'}`);
     console.log(`\n💡 Reasoning: ${analysis.reasoning}`);

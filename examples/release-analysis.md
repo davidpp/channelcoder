@@ -24,6 +24,7 @@ systemPrompt: |
   - Breaking changes → MAJOR (1.0.0 → 2.0.0)
   - New features → MINOR (1.0.0 → 1.1.0)
   - Bug fixes → PATCH (1.0.0 → 1.0.1)
+  - No changes → NONE (keep current version)
 
 # Allow tools for additional analysis if needed
 allowedTools:
@@ -82,7 +83,7 @@ Respond with a JSON object containing your analysis:
 {
   "success": true,
   "recommendedVersion": "X.Y.Z",
-  "changeType": "major|minor|patch",
+  "changeType": "major|minor|patch|none",
   "confidence": "high|medium|low",
   "reasoning": "Brief explanation of the recommendation",
   "breakingChanges": true|false,
