@@ -97,3 +97,37 @@ export type InterpolationValue =
  * Type for interpolation data
  */
 export type InterpolationData = Record<string, InterpolationValue>;
+
+/**
+ * Options for launch() method
+ */
+export interface LaunchOptions {
+  // Process launching mode
+  mode?: 'interactive' | 'detached' | 'background';
+
+  // Log file for detached/background modes
+  logFile?: string;
+
+  // Environment variables to pass to process
+  env?: Record<string, string>;
+
+  // Additional spawn options
+  cwd?: string;
+
+  // Shell to use (for shell: true mode)
+  shell?: boolean | string;
+}
+
+/**
+ * Result from launch() method
+ */
+export interface LaunchResult {
+  // Process ID (for detached/background modes)
+  pid?: number;
+
+  // Exit code (for interactive mode)
+  exitCode?: number;
+
+  // Error message if launch failed
+  error?: string;
+}

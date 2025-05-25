@@ -2,7 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - TBD
 
+### Added
+- **Interactive CLI**: Run Claude directly in your terminal with template processing and file loading
+- **SDK launch() Method**: New method for launching Claude in different modes:
+  - `interactive` - Take over terminal for natural conversation
+  - `detached` - Fire-and-forget background processes  
+  - `background` - Background with optional logging
+- **Template Variables**: Support for `{var}` and `${var}` syntax with defaults
+- **File-based Prompts**: Load prompts from Markdown files with YAML frontmatter
+- **Schema Validation**: Built-in Zod validation for inputs and outputs
+- **Streaming Support**: Real-time streaming in SDK for long responses
+
+### Design Philosophy
+- CLI is for interactive human use (like running `claude` directly)
+- SDK is for programmatic use with output capture
+- Clear separation of concerns for better developer experience
 
 ## [1.1.1] - 2025-01-24
 

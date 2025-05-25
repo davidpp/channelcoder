@@ -277,6 +277,16 @@ export class CCProcess {
 
       // Yield chunks as they become available
       while (!done || chunks.length > 0) {
+        // Check for error first
+        if (error) {
+          yield {
+            type: 'error',
+            content: `Stream execution failed: ${(error as Error).message}`,
+            timestamp: Date.now(),
+          };
+          break;
+        }
+
         if (chunks.length > 0) {
           const chunk = chunks.shift();
           if (chunk) yield chunk;
@@ -288,14 +298,6 @@ export class CCProcess {
 
       if (timeoutId) {
         clearTimeout(timeoutId);
-      }
-
-      if (error) {
-        yield {
-          type: 'error',
-          content: `Stream execution failed: ${error.message}`,
-          timestamp: Date.now(),
-        };
       }
     } catch (error) {
       yield {

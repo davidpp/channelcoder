@@ -1,3 +1,5 @@
+import { spawn, spawnSync } from 'node:child_process';
+import { openSync, writeSync } from 'node:fs';
 import { z } from 'zod';
 import { loadPromptFile } from './loader.js';
 import { CCProcess } from './process.js';
@@ -8,6 +10,8 @@ import type {
   CCResult,
   InterpolationData,
   InterpolationValue,
+  LaunchOptions,
+  LaunchResult,
   PromptConfig,
   RunOptions,
   StreamChunk,
@@ -138,6 +142,106 @@ export class CC {
         type: 'error' as const,
         content: error instanceof Error ? error.message : String(error),
         timestamp: Date.now(),
+      };
+    }
+  }
+
+  /**
+   * Launch Claude without capturing output
+   */
+  async launch(
+    prompt: string | PromptBuilder,
+    options?: LaunchOptions & RunOptions
+  ): Promise<LaunchResult> {
+    try {
+      // Handle PromptBuilder
+      let finalPrompt: string;
+      let finalOptions = options;
+
+      if (prompt instanceof PromptBuilder) {
+        const builder = prompt as any; // Access private properties
+        finalPrompt = builder.prompt;
+        finalOptions = { ...options, ...builder.options };
+      } else {
+        finalPrompt = prompt;
+      }
+
+      // Merge options with defaults
+      const runOptions = { ...this.options, ...finalOptions };
+
+      // Build command args
+      const args = await (this.process as any).buildCommand(runOptions);
+
+      // Add prompt if not resuming/continuing
+      if (!runOptions.resume && !runOptions.continue) {
+        const promptIndex = args.indexOf('-p');
+        if (promptIndex >= 0 && promptIndex < args.length - 1) {
+          args[promptIndex + 1] = finalPrompt;
+        }
+      }
+
+      // Remove 'claude' from args as it's the command
+      const claudeArgs = args.slice(1);
+
+      switch (options?.mode) {
+        case 'detached': {
+          // Launch detached process
+          const stdio = options.logFile
+            ? ['ignore', openSync(options.logFile, 'a'), openSync(options.logFile, 'a')]
+            : 'ignore';
+
+          const child = spawn('claude', claudeArgs, {
+            detached: true,
+            stdio: stdio as any, // stdio type is complex union type
+            env: { ...process.env, ...options.env },
+            cwd: options.cwd,
+          });
+
+          child.unref();
+          return { pid: child.pid };
+        }
+
+        case 'background': {
+          // Launch in background but keep connected
+          const child = spawn('claude', claudeArgs, {
+            stdio: ['ignore', 'pipe', 'pipe'],
+            env: { ...process.env, ...options.env },
+            cwd: options.cwd,
+          });
+
+          // Optionally log output
+          if (options.logFile) {
+            const logFd = openSync(options.logFile, 'a');
+            child.stdout?.on('data', (data) => {
+              writeSync(logFd, data);
+            });
+            child.stderr?.on('data', (data) => {
+              writeSync(logFd, data);
+            });
+          }
+
+          return { pid: child.pid };
+        }
+
+        default: {
+          // Interactive mode (default)
+          const result = spawnSync('claude', claudeArgs, {
+            stdio: 'inherit',
+            env: { ...process.env, ...options?.env },
+            cwd: options?.cwd,
+            shell: options?.shell,
+          });
+
+          if (result.error) {
+            return { error: result.error.message };
+          }
+
+          return { exitCode: result.status ?? undefined };
+        }
+      }
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }

@@ -19,15 +19,19 @@ npm install channelcoder
 
 ### CLI Usage
 
+The CLI runs Claude interactively in your terminal, with added template processing and file loading capabilities.
+
 ```bash
-# Run a prompt file
+# Run a prompt file with data interpolation
 channelcoder prompts/analyze.md -d taskId=FEAT-123
 
-# Inline prompt
+# Inline prompt with variables
 channelcoder -p "Summarize this: {text}" -d text="Hello world"
 
-# Stream responses
-channelcoder -p "Tell me a story" --stream
+# Resume a previous session
+channelcoder -r session-id
+
+# For programmatic use, use the SDK instead
 ```
 
 ### SDK Usage
@@ -35,10 +39,19 @@ channelcoder -p "Tell me a story" --stream
 ```typescript
 import { cc } from 'channelcoder';
 
-// Simple prompt
+// Capture output for processing (original behavior)
 const result = await cc.prompt`
   Analyze task ${taskId} with context: ${context}
 `.run();
+
+// Launch interactively (new in v2.0)
+await cc.launch('Explain this code', { mode: 'interactive' });
+
+// Launch in background with logging
+const { pid } = await cc.launch('Complex analysis', {
+  mode: 'detached',
+  logFile: 'session.log'
+});
 
 // From a file
 const analysis = await cc.fromFile('prompts/analyze.md', {
@@ -115,8 +128,6 @@ Options:
   -r, --resume <id>        Resume conversation by session ID
   -c, --continue           Continue most recent conversation
   --max-turns <n>          Limit agentic turns
-  --stream                 Stream output
-  --json                   JSON output only
   -v, --verbose            Verbose output
   -h, --help               Show help
 ```

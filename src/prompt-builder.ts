@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import type { CC } from './cc.js';
-import type { CCResult, InterpolationValue, PromptConfig, StreamChunk } from './types.js';
+import type { CCResult, InterpolationValue, LaunchOptions, LaunchResult, PromptConfig, StreamChunk } from './types.js';
 
 /**
  * Fluent builder for prompts created with cc.prompt``
@@ -93,6 +93,14 @@ export class PromptBuilder {
   async *stream(): AsyncIterable<StreamChunk> {
     const prompt = this.buildPrompt();
     yield* this.cc.stream(prompt, this.config);
+  }
+
+  /**
+   * Launch the prompt interactively
+   */
+  async launch(options?: LaunchOptions): Promise<LaunchResult> {
+    const prompt = this.buildPrompt();
+    return this.cc.launch(prompt, { ...options, ...this.config });
   }
 
   /**

@@ -43,9 +43,7 @@ Options:
   -r, --resume <id>        Resume conversation by session ID
   -c, --continue           Continue most recent conversation
   --max-turns <n>          Limit agentic turns
-  --stream                 Stream output
   -v, --verbose            Verbose output
-  --json                   Output JSON only (no formatting)
   -h, --help               Show this help
 
 Examples:
@@ -115,9 +113,7 @@ async function main() {
       resume: { type: 'string', short: 'r' },
       continue: { type: 'boolean', short: 'c' },
       'max-turns': { type: 'string' },
-      stream: { type: 'boolean' },
       verbose: { type: 'boolean', short: 'v' },
-      json: { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },
     allowPositionals: true,
@@ -206,106 +202,34 @@ async function main() {
       console.log('');
     }
 
-    // Execute prompt
-    if (values.stream) {
-      // Streaming mode
-      let prompt: string;
+    // Prepare prompt with variable interpolation
+    let prompt: string;
 
-      if (values.prompt) {
-        // Inline prompt - need to interpolate manually
-        const template = new (await import('./template.js')).PromptTemplate();
-        const interpolated = template.interpolate(values.prompt, data);
-        prompt = interpolated;
-      } else {
-        // File-based prompt
-        const promptFile = resolve(positionals[0]);
-        if (values.verbose) {
-          console.log(`📄 Loading prompt from: ${promptFile}`);
-        }
-
-        // For streaming with file, we need to handle this differently
-        // Load the file, get config, then stream
-        const { loadPromptFile } = await import('./loader.js');
-        const { config, content } = await loadPromptFile(promptFile);
-        const template = new (await import('./template.js')).PromptTemplate();
-        const interpolated = template.interpolate(content, data);
-
-        // Merge file config with CLI options
-        Object.assign(options, config, options); // CLI options override file config
-        prompt = interpolated;
-      }
-
-      console.log('🔄 Streaming response...\n');
-
-      for await (const chunk of cc.stream(prompt, options)) {
-        if (chunk.type === 'content') {
-          process.stdout.write(chunk.content);
-        } else if (chunk.type === 'error') {
-          console.error('\n❌ Error:', chunk.content);
-        } else if (values.verbose) {
-          console.log(`\n[${chunk.type}]`, chunk.content);
-        }
-      }
-      console.log('\n');
+    if (values.prompt) {
+      // Inline prompt - interpolate variables
+      const template = new (await import('./template.js')).PromptTemplate();
+      prompt = template.interpolate(values.prompt, data);
     } else {
-      // Normal execution
-      let result: Awaited<ReturnType<typeof cc.run>>;
+      // File-based prompt
+      const promptFile = resolve(positionals[0]);
+      const { loadPromptFile } = await import('./loader.js');
+      const { config, content } = await loadPromptFile(promptFile);
+      const template = new (await import('./template.js')).PromptTemplate();
+      prompt = template.interpolate(content, data);
 
-      if (values.prompt) {
-        // Inline prompt
-        const template = new (await import('./template.js')).PromptTemplate();
-        const interpolated = template.interpolate(values.prompt, data);
-
-        if (values.verbose) {
-          console.log('📝 Executing inline prompt');
-          console.log('  Original:', values.prompt);
-          console.log('  Interpolated:', interpolated);
-        }
-
-        result = await cc.run(interpolated, options);
-      } else {
-        // File-based prompt
-        const promptFile = resolve(positionals[0]);
-        if (values.verbose) {
-          console.log(`📄 Loading prompt from: ${promptFile}`);
-        }
-
-        result = await cc.fromFile(promptFile, data);
-      }
-
-      // Output results
-      if (result.success) {
-        if (result.data) {
-          if (values.json) {
-            // Raw JSON output
-            console.log(JSON.stringify(result.data, null, 2));
-          } else {
-            // Formatted output
-            console.log('✅ Success!\n');
-            console.log('📊 Data:');
-            console.log(JSON.stringify(result.data, null, 2));
-          }
-        } else if (result.stdout) {
-          if (!values.json) {
-            console.log('✅ Response:\n');
-          }
-          console.log(result.stdout);
-        }
-
-        if (result.warnings && result.warnings.length > 0 && values.verbose) {
-          console.log('\n⚠️  Warnings:');
-          for (const w of result.warnings) {
-            console.log(`  - ${w}`);
-          }
-        }
-      } else {
-        console.error('❌ Error:', result.error);
-        if (result.stderr && values.verbose) {
-          console.error('\n📋 Stderr:', result.stderr);
-        }
-        process.exit(1);
-      }
+      // Merge file config with CLI options
+      Object.assign(options, config, options); // CLI options override file config
     }
+
+    // Launch Claude interactively
+    const launchResult = await cc.launch(prompt, { ...options, mode: 'interactive' });
+
+    if (launchResult.error) {
+      console.error('Error launching Claude:', launchResult.error);
+      process.exit(1);
+    }
+
+    process.exit(launchResult.exitCode || 0);
   } catch (error) {
     console.error('❌ Fatal error:', error);
     process.exit(1);
