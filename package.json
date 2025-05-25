@@ -48,7 +48,8 @@
     "release:execute": "bun run scripts/release.ts execute",
     "release:publish": "bun run scripts/release.ts publish",
     "release:full": "bun run scripts/release.ts full",
-    "test:smoke": "bun run scripts/smoke-test.ts"
+    "test:smoke": "bun run scripts/smoke-test.ts",
+    "implement": "bun run scripts/implement.ts"
   },
   "dependencies": {
     "commander": "^14.0.0",
