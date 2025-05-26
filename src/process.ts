@@ -311,7 +311,7 @@ export class CCProcess {
   /**
    * Build command arguments for Claude Code CLI
    */
-  private async buildCommand(options: CCOptions & PromptConfig): Promise<string[]> {
+  async buildCommand(options: CCOptions & PromptConfig): Promise<string[]> {
     const cmd = ['claude'];
 
     // Conversation options (must come before -p)

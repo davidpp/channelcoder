@@ -11,7 +11,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { Command } from 'commander';
-import { cc } from '../src/index.js';
+import { claude } from '../src/index.js';
 
 // Get __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -221,7 +221,7 @@ async function analyzeRelease(requestedVersion?: string, verbose = false): Promi
   // Call Claude using ChannelCoder
   console.log('🤖 Calling Claude for release analysis...');
 
-  const result = await cc.fromFile(join(__dirname, 'prompts/release-analysis.md'), data);
+  const result = await claude(join(__dirname, 'prompts/release-analysis.md'), { data });
 
   if (verbose) {
     console.log('🔍 Claude response:', result);

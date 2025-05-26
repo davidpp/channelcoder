@@ -1,6 +1,13 @@
 import type { z } from 'zod';
 import type { CC } from './cc.js';
-import type { CCResult, InterpolationValue, LaunchOptions, LaunchResult, PromptConfig, StreamChunk } from './types.js';
+import type {
+  CCResult,
+  InterpolationValue,
+  LaunchOptions,
+  LaunchResult,
+  PromptConfig,
+  StreamChunk,
+} from './types.js';
 
 /**
  * Fluent builder for prompts created with cc.prompt``

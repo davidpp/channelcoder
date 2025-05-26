@@ -3,8 +3,10 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { parseArgs } from 'util';
-import { cc } from './index.js';
-import type { CCOptions, InterpolationData, RunOptions } from './types.js';
+import { type ClaudeOptions, interactive } from './index.js';
+import { loadPromptFile } from './loader.js';
+import { PromptTemplate } from './template.js';
+import type { InterpolationData } from './types.js';
 
 /**
  * CC CLI - Command line interface for CC SDK
@@ -147,14 +149,14 @@ async function main() {
     }
 
     // Build options
-    const options: Partial<RunOptions & CCOptions> = {};
+    const options: Partial<ClaudeOptions> = {};
 
     // System prompt options
     if (values.system) {
-      options.systemPrompt = values.system;
+      options.system = values.system;
     }
     if (values['append-system']) {
-      options.appendSystemPrompt = values['append-system'];
+      options.appendSystem = values['append-system'];
     }
 
     // Tool options
@@ -162,9 +164,9 @@ async function main() {
       // Handle both comma and space separated tools
       // If contains comma, split by comma; otherwise split by space
       if (values.tools.includes(',')) {
-        options.allowedTools = values.tools.split(',').map((t) => t.trim());
+        options.tools = values.tools.split(',').map((t) => t.trim());
       } else {
-        options.allowedTools = values.tools.split(/\s+/).filter((t) => t);
+        options.tools = values.tools.split(/\s+/).filter((t) => t);
       }
     }
     if (values['disallowed-tools']) {
@@ -181,7 +183,7 @@ async function main() {
       options.mcpConfig = values['mcp-config'];
     }
     if (values['permission-tool']) {
-      options.permissionPromptTool = values['permission-tool'];
+      options.permissionTool = values['permission-tool'];
     }
 
     // Conversation options
@@ -202,27 +204,27 @@ async function main() {
       console.log('');
     }
 
-    // Prepare prompt with variable interpolation
-    let prompt: string;
+    // Add data to options
+    if (Object.keys(data).length > 0) {
+      options.data = data;
+    }
 
-    if (values.prompt) {
-      // Inline prompt - interpolate variables
-      const template = new (await import('./template.js')).PromptTemplate();
-      prompt = template.interpolate(values.prompt, data);
-    } else {
-      // File-based prompt
-      const promptFile = resolve(positionals[0]);
-      const { loadPromptFile } = await import('./loader.js');
-      const { config, content } = await loadPromptFile(promptFile);
-      const template = new (await import('./template.js')).PromptTemplate();
-      prompt = template.interpolate(content, data);
-
-      // Merge file config with CLI options
-      Object.assign(options, config, options); // CLI options override file config
+    // Add verbose flag
+    if (values.verbose) {
+      options.verbose = true;
     }
 
     // Launch Claude interactively
-    const launchResult = await cc.launch(prompt, { ...options, mode: 'interactive' });
+    let launchResult: Awaited<ReturnType<typeof interactive>>;
+
+    if (values.prompt) {
+      // Inline prompt
+      launchResult = await interactive(values.prompt, options);
+    } else {
+      // File-based prompt
+      const promptFile = resolve(positionals[0]);
+      launchResult = await interactive(promptFile, options);
+    }
 
     if (launchResult.error) {
       console.error('Error launching Claude:', launchResult.error);
