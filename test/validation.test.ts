@@ -32,19 +32,18 @@ Tags: {tags}
     );
 
     // Test with missing required field
-    try {
-      await claude(promptPath, {
-        data: {
-          // Missing taskId!
-          priority: 'high',
-          tags: ['bug', 'urgent'],
-        },
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      expect(errorMessage).toContain('Input validation failed');
-      expect(errorMessage).toContain('taskId');
-    }
+    const result = await claude(promptPath, {
+      dryRun: true,
+      data: {
+        // Missing taskId!
+        priority: 'high',
+        tags: ['bug', 'urgent'],
+      },
+    });
+    
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Input validation failed');
+    expect(result.error).toContain('taskId');
   });
 
   test('validates optional fields correctly', async () => {
@@ -63,17 +62,15 @@ Hello {name}, age: {age || 'unknown'}
     );
 
     // Should work without optional fields
-    try {
-      await claude(promptPath, {
-        data: {
-          name: 'Alice',
-        },
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      // Should not be validation error
-      expect(errorMessage).not.toContain('Input validation failed');
-    }
+    const result = await claude(promptPath, {
+      dryRun: true,
+      data: {
+        name: 'Alice',
+      },
+    });
+    
+    expect(result.success).toBe(true);
+    expect(result.data.fullCommand).toMatchSnapshot();
   });
 
   test('validates data types correctly', async () => {
@@ -92,18 +89,17 @@ Count: {count}, Active: {active}, Items: {items}
     );
 
     // Test with wrong types
-    try {
-      await claude(promptPath, {
-        data: {
-          count: 'not a number', // Wrong type!
-          active: true,
-          items: ['a', 'b'],
-        },
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      expect(errorMessage).toContain('Input validation failed');
-    }
+    const result = await claude(promptPath, {
+      dryRun: true,
+      data: {
+        count: 'not a number', // Wrong type!
+        active: true,
+        items: ['a', 'b'],
+      },
+    });
+    
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Input validation failed');
   });
 
   test('validates nested objects', async () => {
@@ -126,44 +122,41 @@ Theme: {settings.theme}
     );
 
     // Test with valid nested data
-    try {
-      await claude(promptPath, {
-        data: {
-          user: {
-            name: 'Bob',
-            email: 'bob@example.com',
-          },
-          settings: {
-            theme: 'dark',
-            notifications: true,
-          },
+    const result1 = await claude(promptPath, {
+      dryRun: true,
+      data: {
+        user: {
+          name: 'Bob',
+          email: 'bob@example.com',
         },
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      // Should not be validation error
-      expect(errorMessage).not.toContain('Input validation failed');
-    }
+        settings: {
+          theme: 'dark',
+          notifications: true,
+        },
+      },
+    });
+    
+    expect(result1.success).toBe(true);
+    expect(result1.data.fullCommand).toMatchSnapshot();
 
     // Test with missing nested field
-    try {
-      await claude(promptPath, {
-        data: {
-          user: {
-            name: 'Bob',
-            // Missing email!
-          },
-          settings: {
-            theme: 'dark',
-            notifications: true,
-          },
+    const result2 = await claude(promptPath, {
+      dryRun: true,
+      data: {
+        user: {
+          name: 'Bob',
+          // Missing email!
         },
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      expect(errorMessage).toContain('Input validation failed');
-      expect(errorMessage).toContain('email');
-    }
+        settings: {
+          theme: 'dark',
+          notifications: true,
+        },
+      },
+    });
+    
+    expect(result2.success).toBe(false);
+    expect(result2.error).toContain('Input validation failed');
+    expect(result2.error).toContain('email');
   });
 
   test('no validation when schema not provided', async () => {
@@ -179,19 +172,17 @@ Analyze {anything} with {whatever}
     );
 
     // Should work with any data when no schema
-    try {
-      await claude(promptPath, {
-        data: {
-          anything: 123,
-          whatever: { nested: true },
-          extra: 'fields are ok',
-        },
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      // Should not be validation error
-      expect(errorMessage).not.toContain('Input validation failed');
-    }
+    const result = await claude(promptPath, {
+      dryRun: true,
+      data: {
+        anything: 123,
+        whatever: { nested: true },
+        extra: 'fields are ok',
+      },
+    });
+    
+    expect(result.success).toBe(true);
+    expect(result.data.fullCommand).toMatchSnapshot();
   });
 
   test('frontmatter system prompt works', async () => {
@@ -207,13 +198,14 @@ Help me with {task}
 `
     );
 
-    try {
-      await claude(promptPath, {
-        data: { task: 'debugging' },
-      });
-    } catch (error) {
-      // Should process frontmatter correctly before failing at Claude execution
-      expect(error).toBeDefined();
-    }
+    const result = await claude(promptPath, {
+      dryRun: true,
+      data: { task: 'debugging' },
+    });
+    
+    expect(result.success).toBe(true);
+    expect(result.data.fullCommand).toMatchSnapshot();
+    expect(result.data.fullCommand).toContain('--system-prompt');
+    expect(result.data.fullCommand).toContain('You are a helpful assistant');
   });
 });
