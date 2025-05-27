@@ -95,7 +95,7 @@ await claude('Analyze {code} for {issues}', {
 
 // In file prompts
 // prompts/review.md:
-// Review {prTitle} with focus on {concerns || "general quality"}
+// Review {prTitle} with focus on {concerns ? concerns : "general quality"}
 await claude('prompts/review.md', {
   data: { prTitle: 'Add auth system' }
 });
@@ -238,11 +238,10 @@ const config: Frontmatter = {
 };
 ```
 
-#### Schema Definition Formats
+#### Schema Definition Format
 
-Schemas can be defined in multiple ways:
+Schemas are defined using YAML notation that's automatically converted to Zod schemas:
 
-**1. YAML Notation (Simplified)**
 ```yaml
 ---
 input:
@@ -250,37 +249,20 @@ input:
   age?: number             # Optional with ?
   tags: string[]           # Arrays with []
   metadata:                # Nested objects
-    created: date
-    updated?: date
+    created: string
+    updated?: string
 ---
 ```
 
-**2. JSON Schema Format**
-```yaml
----
-input:
-  type: object
-  properties:
-    name:
-      type: string
-      description: "User's name"
-    age:
-      type: number
-      minimum: 0
-  required: ["name"]
----
-```
+**Supported types:**
+- `string` - Text values
+- `number` - Numeric values  
+- `boolean` or `bool` - True/false values
+- `array` or `type[]` - Arrays
+- `object` - Nested objects
+- `any` - Any value
 
-**3. Programmatic (SDK only)**
-```typescript
-import { z } from 'zod';
-
-// Define schema in frontmatter or pass to validation utils
-const schema = z.object({
-  name: z.string(),
-  age: z.number().optional()
-});
-```
+**Note:** For programmatic SDK usage, you can also use Zod schemas directly in the validation utilities.
 
 ### Examples
 
@@ -298,9 +280,9 @@ allowedTools:
   - Read
   - Grep
 ---
-# Analysis for ${task}
+# Analysis for {task}
 
-${details ? "Provide detailed breakdown." : "Summary only."}
+{details ? "Provide detailed breakdown." : "Summary only."}
 ```
 
 Run it:
@@ -432,8 +414,8 @@ if (!result.success) {
   }
 }
 
-// Check for specific conditions
-if (result.metadata?.isMaxTurns) {
+// Type-safe error handling
+if (result.warnings?.includes('max turns reached')) {
   console.log('Hit maximum turn limit');
 }
 ```
@@ -459,16 +441,13 @@ await interactive('Help me debug this issue');
 ### Session Management
 
 ```typescript
-// Start a conversation
-const first = await claude('Remember the number 42');
-
-// Continue the conversation
-const second = await claude('What number did I ask you to remember?', {
-  resume: first.metadata?.sessionId
+// Resume a specific session by ID
+await claude('Continue our discussion', {
+  resume: 'session-id-here'
 });
 
 // Continue most recent session
-const latest = await claude('Continue where we left off', {
+await claude('Continue where we left off', {
   continue: true
 });
 ```
@@ -498,11 +477,11 @@ allowedTools:
   - "Bash(git:*)"  # With patterns
 ---
 
-# Your prompt with ${name} interpolation
+# Your prompt with {name} interpolation
 
-Age: ${age || "not specified"}
+Age: {age ? age : "not specified"}
 
-Tags: ${tags}
+Tags: {tags}
 ```
 
 ## Requirements

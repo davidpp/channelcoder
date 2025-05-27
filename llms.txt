@@ -1,0 +1,145 @@
+# channelcoder
+
+A streamlined SDK and CLI wrapper for Claude Code that enhances prompt engineering capabilities through multi-place variable interpolation, schema validation, and file-based prompts.
+
+## Quick Start
+
+```typescript
+import { claude, stream, interactive } from 'channelcoder';
+
+// Simple usage
+const result = await claude('Hello, Claude!');
+
+// Streaming responses
+await stream('Tell me a story', { 
+  onChunk: (chunk) => process.stdout.write(chunk) 
+});
+
+// Interactive mode (replaces current process)
+await interactive('Start a conversation...');
+```
+
+## Key Features
+
+- Function-based API with `claude()`, `stream()`, `interactive()`, and `run()`
+- Variable interpolation: `{varName}` or `${varName}` (both supported)
+- Conditional prompts: `{#if condition}...{#endif}`
+- Ternary expressions: `{age ? age : 'not specified'}`
+- File-based prompts with YAML frontmatter
+- YAML-based schema validation (converted to Zod)
+- True process replacement in interactive mode
+- Compatible with both Node.js and Bun
+
+## Variable Interpolation
+
+- Both `{variable}` and `${variable}` syntax supported
+- Nested access: `{user.name}` or `${user.name}`
+- Ternary expressions: `{isLoggedIn ? 'Welcome' : 'Please login'}`
+- Escape with backslash: `\{literal}` or `\${literal}`
+
+## File-based Prompts
+
+Create markdown files with YAML frontmatter:
+
+```markdown
+---
+systemPrompt: "You are a helpful assistant"
+allowedTools:
+  - Read
+  - Write
+  - Bash(git:*)
+input:
+  name: string
+  age?: number        # Optional field (? suffix)
+  tags: string[]      # Array type
+---
+
+Hello {name}, you are {age ? age : 'unknown'} years old.
+
+{#if showDetails}
+Additional details here...
+{#endif}
+```
+
+## Schema Validation
+
+Uses YAML notation that's converted to Zod schemas:
+
+```yaml
+input:
+  name: string               # Required string
+  age?: number              # Optional number
+  tags: string[]            # Array of strings
+  settings:                 # Nested object
+    theme: string
+    notifications?: boolean
+```
+
+Supported types: `string`, `number`, `boolean`, `array`, `object`, `any`
+
+## CLI Usage
+
+```bash
+# Run a prompt file with data
+channelcoder prompts/analyze.md -d taskId=FEAT-123
+
+# Inline prompt with variables
+channelcoder -p "Summarize: {text}" -d text="Hello world"
+
+# With tools and system prompt
+channelcoder prompt.md -t "Read Write" -s "Be concise"
+
+# Resume session
+channelcoder -r session-id
+```
+
+## SDK Options
+
+```typescript
+await claude('Your prompt', {
+  // Data interpolation
+  data: { key: 'value' },
+  
+  // System configuration
+  system: 'You are a helpful assistant',
+  appendSystem: 'Be concise',
+  
+  // Tool configuration
+  tools: ['Read', 'Write', 'Bash(git:*)'],
+  disallowedTools: ['Bash(rm:*)'],
+  
+  // Session management
+  resume: 'session-id',
+  continue: true,
+  
+  // Execution control
+  maxTurns: 10,
+  timeout: 60000,
+  verbose: true
+});
+```
+
+## Execution Modes
+
+- **Run mode** (default): Get complete results programmatically
+- **Stream mode**: Real-time streaming responses
+- **Interactive mode**: Replace process with Claude (no return)
+
+## Installation
+
+```bash
+npm install channelcoder
+# or
+bun add channelcoder
+```
+
+## Requirements
+
+- Claude Code CLI installed and configured
+- Node.js 18+ or Bun runtime
+
+## Links
+
+- GitHub: https://github.com/davidpp/channelcoder
+- npm: https://www.npmjs.com/package/channelcoder
+- Issues: https://github.com/davidpp/channelcoder/issues
