@@ -9,7 +9,7 @@
 
 import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
-import { cc } from '../src/index.js';
+import { claude } from '../src/index.js';
 import { z } from 'zod';
 
 // Define the expected output schema
@@ -93,13 +93,15 @@ async function main() {
     // Method 1: Using file-based prompt with validation
     console.log('🔍 Running release analysis...\n');
 
-    const result = await cc.fromFile('examples/release-analysis.md', {
-      currentVersion,
-      lastTag,
-      commits,
-      fileChanges,
-      // Optional: provide a target version to validate
-      targetVersion: process.argv[2],
+    const result = await claude('examples/release-analysis.md', {
+      data: {
+        currentVersion,
+        lastTag,
+        commits,
+        fileChanges,
+        // Optional: provide a target version to validate
+        targetVersion: process.argv[2],
+      }
     });
 
     if (!result.success) {
@@ -108,7 +110,9 @@ async function main() {
     }
 
     // Validate the response
-    const validation = cc.validate(result, ReleaseAnalysisSchema);
+    const validation = result.data ? 
+      { success: true, data: ReleaseAnalysisSchema.parse(result.data) } : 
+      { success: false, error: 'No data returned' };
     if (!validation.success) {
       console.error('❌ Invalid response format:', validation.error);
       process.exit(1);
@@ -131,15 +135,13 @@ async function main() {
     // Method 2: Alternative using inline prompt (for demonstration)
     console.log('\n\n--- Alternative: Using inline prompt ---\n');
 
-    const inlineResult = await cc.prompt`
+    const inlineResult = await claude`
       Analyze these commits for version bump:
       Current: ${currentVersion}
       Commits: ${commits.split('\n').slice(0, 5).join('\n')}
       
       Suggest: major, minor, or patch?
-    `
-      .withSystemPrompt('Be concise. Respond with just the version type.')
-      .run();
+    `;
 
     if (inlineResult.success && inlineResult.stdout) {
       console.log(`Quick suggestion: ${inlineResult.stdout.trim()}`);

@@ -1,18 +1,20 @@
 /**
- * CC SDK - Claude Code SDK
+ * ChannelCoder SDK - Channel your prompts to Claude Code
  *
- * A thin SDK for interacting with Claude Code CLI
+ * Function-based SDK for interacting with Claude Code CLI
  */
 
-import { CC } from './cc.js';
-import { type Frontmatter, FrontmatterSchema } from './loader.js';
-import type { CCOptions, CCResult, PromptConfig } from './types.js';
+// Export main functions
+export { claude, interactive, stream, run, type ClaudeOptions } from './functions.js';
 
-// Default instance for convenience
-export const cc = new CC();
+// Export types
+export type {
+  CCResult,
+  StreamChunk,
+  LaunchResult,
+  InterpolationData,
+  InterpolationValue,
+} from './types.js';
 
-// Export main class and types
-export { CC, type CCResult, type CCOptions, type PromptConfig };
-
-// Export schema and types for frontmatter validation
-export { FrontmatterSchema, type Frontmatter };
+// Export loader utilities for advanced usage
+export { loadPromptFile, FrontmatterSchema, type Frontmatter } from './loader.js';

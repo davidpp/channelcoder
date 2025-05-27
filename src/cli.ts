@@ -3,8 +3,10 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { parseArgs } from 'util';
-import { cc } from './index.js';
-import type { CCOptions, InterpolationData, RunOptions } from './types.js';
+import { type ClaudeOptions, interactive } from './index.js';
+import { loadPromptFile } from './loader.js';
+import { PromptTemplate } from './template.js';
+import type { InterpolationData } from './types.js';
 
 /**
  * CC CLI - Command line interface for CC SDK
@@ -147,14 +149,14 @@ async function main() {
     }
 
     // Build options
-    const options: Partial<RunOptions & CCOptions> = {};
+    const options: Partial<ClaudeOptions> = {};
 
     // System prompt options
     if (values.system) {
-      options.systemPrompt = values.system;
+      options.system = values.system;
     }
     if (values['append-system']) {
-      options.appendSystemPrompt = values['append-system'];
+      options.appendSystem = values['append-system'];
     }
 
     // Tool options
@@ -162,9 +164,9 @@ async function main() {
       // Handle both comma and space separated tools
       // If contains comma, split by comma; otherwise split by space
       if (values.tools.includes(',')) {
-        options.allowedTools = values.tools.split(',').map((t) => t.trim());
+        options.tools = values.tools.split(',').map((t) => t.trim());
       } else {
-        options.allowedTools = values.tools.split(/\s+/).filter((t) => t);
+        options.tools = values.tools.split(/\s+/).filter((t) => t);
       }
     }
     if (values['disallowed-tools']) {
@@ -181,7 +183,7 @@ async function main() {
       options.mcpConfig = values['mcp-config'];
     }
     if (values['permission-tool']) {
-      options.permissionPromptTool = values['permission-tool'];
+      options.permissionTool = values['permission-tool'];
     }
 
     // Conversation options
@@ -202,36 +204,55 @@ async function main() {
       console.log('');
     }
 
-    // Prepare prompt with variable interpolation
-    let prompt: string;
+    // Add data to options
+    if (Object.keys(data).length > 0) {
+      options.data = data;
+    }
 
-    if (values.prompt) {
-      // Inline prompt - interpolate variables
-      const template = new (await import('./template.js')).PromptTemplate();
-      prompt = template.interpolate(values.prompt, data);
-    } else {
-      // File-based prompt
-      const promptFile = resolve(positionals[0]);
-      const { loadPromptFile } = await import('./loader.js');
-      const { config, content } = await loadPromptFile(promptFile);
-      const template = new (await import('./template.js')).PromptTemplate();
-      prompt = template.interpolate(content, data);
-
-      // Merge file config with CLI options
-      Object.assign(options, config, options); // CLI options override file config
+    // Add verbose flag
+    if (values.verbose) {
+      options.verbose = true;
     }
 
     // Launch Claude interactively
-    const launchResult = await cc.launch(prompt, { ...options, mode: 'interactive' });
-
-    if (launchResult.error) {
-      console.error('Error launching Claude:', launchResult.error);
-      process.exit(1);
+    // Note: interactive() replaces the current process, so code after this won't execute
+    if (values.prompt) {
+      // Inline prompt
+      await interactive(values.prompt, options);
+    } else {
+      // File-based prompt
+      const promptFile = resolve(positionals[0]);
+      await interactive(promptFile, options);
     }
 
-    process.exit(launchResult.exitCode || 0);
+    // This code will never be reached because interactive() replaces the process
+    console.error('❌ ERROR: Interactive mode failed to replace process');
+    process.exit(1);
   } catch (error) {
-    console.error('❌ Fatal error:', error);
+    if (error instanceof Error) {
+      // Check for common errors and provide helpful messages
+      if (error.message.includes('ENOENT') || error.message.includes('no such file')) {
+        const fileMatch = error.message.match(/Failed to load prompt file ([^:]+)/);
+        if (fileMatch) {
+          console.error(`❌ Error: Prompt file not found: ${fileMatch[1]}`);
+          console.error('💡 Make sure the file exists or use -p for inline prompts');
+        } else {
+          console.error('❌ Error: File not found');
+          console.error(error.message);
+        }
+      } else if (error.message.includes('Input validation failed')) {
+        console.error(`❌ ${error.message}`);
+        console.error('💡 Check that all required fields are provided with -d');
+      } else if (error.message.includes('Failed to launch Claude')) {
+        console.error('❌ Error: Failed to launch Claude CLI');
+        console.error('💡 Make sure Claude CLI is installed: npm install -g @anthropic-ai/claude-code');
+      } else {
+        // Other errors - show message without stack trace
+        console.error('❌ Error:', error.message);
+      }
+    } else {
+      console.error('❌ Fatal error:', error);
+    }
     process.exit(1);
   }
 }

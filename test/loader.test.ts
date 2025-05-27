@@ -61,6 +61,7 @@ Content`;
       expect(result.config.input).toBeDefined();
       expect(result.config.input).toHaveProperty('name');
       expect(result.config.input).toHaveProperty('age');
+      // Note: 'optional?' becomes 'optional' (without ?) in the parsed schema
       expect(result.config.input).toHaveProperty('optional');
     });
 

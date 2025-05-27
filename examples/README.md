@@ -163,19 +163,94 @@ bun run examples/root-cause-analysis.ts --search "TODO|FIXME"
      param2?: boolean
    output:
      result: string
+   systemPrompt: "You are a helpful assistant"
+   allowedTools: [Read, Write]
    ---
-   Process ${param1}...
+   Process {param1}...
    ```
 
 2. **Use in Your Script**:
    ```typescript
-   const result = await cc.fromFile('your-prompt.md', {
-     param1: 'value',
-     param2: true
+   import { claude } from 'channelcoder';
+   
+   const result = await claude('your-prompt.md', {
+     data: {
+       param1: 'value',
+       param2: true
+     }
    });
+   
+   // Input validation happens automatically if schema in frontmatter
+   if (result.success) {
+     console.log(result.data); // Typed based on output schema
+   }
    ```
 
-3. **Validate Results**:
+3. **Different Execution Modes**:
    ```typescript
-   const validated = cc.validate(result, YourSchema);
+   // Streaming
+   for await (const chunk of stream('your-prompt.md', { data })) {
+     console.log(chunk.content);
+   }
+   
+   // Interactive (replaces current process!)
+   await interactive('your-prompt.md', { data });
+   // ⚠️ Code after interactive() never executes!
    ```
+
+## All Example Files
+
+### Core Examples
+
+1. **`basic-usage.ts`** - Simple examples showing core functionality
+   ```bash
+   bun run examples/basic-usage.ts
+   ```
+
+2. **`file-based-usage.ts`** - File-based prompts with frontmatter and validation
+   ```bash
+   bun run examples/file-based-usage.ts
+   ```
+
+3. **`launch-modes.ts`** - Different execution modes (run, stream, interactive)
+   ```bash
+   bun run examples/launch-modes.ts [mode]
+   # Modes: run, stream, interactive, template, file, all
+   ```
+
+### New in v2.0.0
+
+4. **`interactive-demo.ts`** ⭐ - Shows process replacement behavior
+   ```bash
+   bun run examples/interactive-demo.ts
+   # Or with context:
+   bun run examples/interactive-demo.ts "debugging TypeScript"
+   ```
+
+5. **`dry-run-demo.ts`** ⭐ - Generate CLI commands without execution
+   ```bash
+   bun run examples/dry-run-demo.ts
+   ```
+
+### Advanced Examples
+
+6. **`demo-features.ts`** - Feature showcase (no execution)
+   ```bash
+   bun run examples/demo-features.ts
+   ```
+
+7. **`release.ts`** - Real-world release automation
+   ```bash
+   bun run examples/release.ts [version]
+   ```
+
+### Quick Start
+
+Run multiple examples at once:
+```bash
+# Run basic examples
+bun run example:quick
+
+# Run all non-interactive examples
+bun run examples/launch-modes.ts all
+```

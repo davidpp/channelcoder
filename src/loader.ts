@@ -106,7 +106,9 @@ function parseSchema(
     const zodSchema: Record<string, z.ZodType> = {};
 
     for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
-      zodSchema[key] = parseFieldType(key, value);
+      // Strip optional modifier from key name
+      const cleanKey = key.endsWith('?') ? key.slice(0, -1) : key;
+      zodSchema[cleanKey] = parseFieldType(key, value);
     }
 
     // For output schemas, always return as z.object()

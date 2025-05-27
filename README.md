@@ -1,112 +1,128 @@
 # ChannelCoder
 
-A streamlined SDK and CLI for Claude Code that channels your prompts with powerful features like multi-place variable interpolation, schema validation, and streaming support.
+A streamlined SDK and CLI for Claude Code that channels your prompts with powerful features like multi-place variable interpolation, file-based prompts, and streaming support.
 
 ## Installation
 
 ```bash
 # Using npm
-npm install -g channelcoder
+npm install channelcoder
 
 # Using bun
-bun add -g channelcoder
+bun add channelcoder
 
-# For project-specific installation
-npm install channelcoder
+# Global CLI installation
+npm install -g channelcoder
 ```
 
 ## Quick Start
 
-### CLI Usage
-
-The CLI runs Claude interactively in your terminal, with added template processing and file loading capabilities.
-
-```bash
-# Run a prompt file with data interpolation
-channelcoder prompts/analyze.md -d taskId=FEAT-123
-
-# Inline prompt with variables
-channelcoder -p "Summarize this: {text}" -d text="Hello world"
-
-# Resume a previous session
-channelcoder -r session-id
-
-# For programmatic use, use the SDK instead
-```
-
 ### SDK Usage
 
 ```typescript
-import { cc } from 'channelcoder';
+import { claude } from 'channelcoder';
 
-// Capture output for processing (original behavior)
-const result = await cc.prompt`
-  Analyze task ${taskId} with context: ${context}
-`.run();
+// Simple prompt
+const result = await claude('What is TypeScript?');
 
-// Launch interactively (new in v2.0)
-await cc.launch('Explain this code', { mode: 'interactive' });
+// Template literals
+const language = 'TypeScript';
+await claude`Explain ${language} in simple terms`;
 
-// Launch in background with logging
-const { pid } = await cc.launch('Complex analysis', {
-  mode: 'detached',
-  logFile: 'session.log'
+// File-based prompt with data
+await claude('prompts/analyze.md', {
+  data: { taskId: 'FEAT-123', priority: 'high' }
 });
 
-// From a file
-const analysis = await cc.fromFile('prompts/analyze.md', {
-  taskId: 'FEAT-123',
-  context: 'Implementation details'
+// With options
+await claude('Review this code', {
+  tools: ['Read', 'Grep'],
+  system: 'You are a code reviewer'
 });
+```
+
+### CLI Usage
+
+The CLI runs Claude interactively in your terminal, with added template processing:
+
+```bash
+# Run a prompt file with data
+channelcoder prompts/analyze.md -d taskId=FEAT-123
+
+# Inline prompt with variables
+channelcoder -p "Summarize: {text}" -d text="Hello world"
+
+# With tools and system prompt
+channelcoder prompt.md -t "Read Write" -s "Be concise"
+
+# Resume session
+channelcoder -r session-id
 ```
 
 ## Features
 
-### 🔄 Multi-place Variable Interpolation
+### 🎯 Simple Function API
 
-Unlike Claude's single-place commands, ChannelCoder supports variables anywhere:
-
-```typescript
-const result = await cc.prompt`
-  Task: ${task}
-  Priority: ${priority}
-  ${urgent ? "⚠️ URGENT: Handle immediately" : ""}
-`.run();
-```
-
-### ✅ Schema Validation
-
-Built-in Zod validation for inputs and outputs:
-
-```yaml
----
-input:
-  taskId: string
-  priority?: string
-output:
-  success: boolean
-  result: string
----
-Analyze task ${taskId}...
-```
-
-### 🌊 Streaming Support
-
-Real-time streaming for long responses:
+Mirrors Claude CLI's mental model with a simple function:
 
 ```typescript
-for await (const chunk of cc.stream(cc.prompt`Generate report`)) {
-  console.log(chunk.content);
+// Inline prompts
+await claude('Explain quantum computing');
+
+// File prompts (auto-detected by .md extension)
+await claude('prompts/complex-analysis.md');
+
+// With all the options you need
+await claude('Debug this issue', {
+  tools: ['Read', 'Bash'],
+  resume: sessionId,
+  maxTurns: 10
+});
+```
+
+### 🔄 Variable Interpolation
+
+Powerful multi-place variable support:
+
+```typescript
+// In inline prompts
+await claude('Analyze {code} for {issues}', {
+  data: {
+    code: 'const x = null',
+    issues: ['null safety', 'type errors']
+  }
+});
+
+// In file prompts
+// prompts/review.md:
+// Review {prTitle} with focus on {concerns || "general quality"}
+await claude('prompts/review.md', {
+  data: { prTitle: 'Add auth system' }
+});
+```
+
+### 🌊 Execution Modes
+
+Different modes for different needs:
+
+```typescript
+import { claude, interactive, stream, run } from 'channelcoder';
+
+// Run mode (default) - Get complete results programmatically
+const result = await claude('Generate tests');
+console.log(result.data);
+
+// Stream mode - Real-time responses
+for await (const chunk of stream('Write documentation')) {
+  process.stdout.write(chunk.content);
 }
-```
 
-### 🛠️ Fluent Builder API
+// Interactive mode - Replace process (like running claude directly)
+await interactive('Debug this error');
+// ⚠️ Code after interactive() never executes!
 
-```typescript
-const result = await cc.prompt`Generate ${type}`
-  .withSystemPrompt('Be concise')
-  .withTools(['Read', 'Write'])
-  .run();
+// Explicit run mode
+const result2 = await run('Analyze code', { tools: ['Read'] });
 ```
 
 ## CLI Reference
@@ -191,10 +207,10 @@ Your prompt content here...
 ```
 
 **Note:** The following options are passed via CLI or SDK, not frontmatter:
-- `outputFormat` - Use `--json` flag or `cc.run(prompt, { outputFormat: 'json' })`
-- `stream` - Use `--stream` flag or `cc.stream()`
-- `verbose` - Use `--verbose` flag or `cc.run(prompt, { verbose: true })`
-- `timeout` - SDK only: `cc.run(prompt, { timeout: 30000 })`
+- `outputFormat` - Use `--json` flag or `claude(prompt, { outputFormat: 'json' })`
+- `stream` - Use `--stream` flag or `stream()` function
+- `verbose` - Use `--verbose` flag or `claude(prompt, { verbose: true })`
+- `timeout` - SDK only: `claude(prompt, { timeout: 30000 })`
 
 #### Frontmatter Validation
 
@@ -259,12 +275,11 @@ input:
 ```typescript
 import { z } from 'zod';
 
+// Define schema in frontmatter or pass to validation utils
 const schema = z.object({
   name: z.string(),
   age: z.number().optional()
 });
-
-cc.prompt`...`.withSchema(schema);
 ```
 
 ### Examples
@@ -333,8 +348,9 @@ channelcoder cleanup.md --disallowed-tools "Bash(rm:*),Bash(git:push)"
 channelcoder -p "Process items: {items}" \
    -d 'items=["apple","banana","orange"]'
 
-# Via stdin
-echo '{"config": {"port": 3000}}' | cc prompt.md --data-stdin
+# Complex nested data
+channelcoder -p "Config: {config}" \
+   -d 'config={"port":3000,"host":"localhost"}'
 ```
 
 ## SDK Reference
@@ -342,47 +358,62 @@ echo '{"config": {"port": 3000}}' | cc prompt.md --data-stdin
 ### Basic Usage
 
 ```typescript
-import { cc } from 'channelcoder';
+import { claude } from 'channelcoder';
 
-// Template literal prompts
-const result = await cc.prompt`
-  Your prompt here with ${variables}
-`.run();
+// Simple prompts
+const result = await claude('Explain TypeScript');
+
+// Template literals
+const topic = 'async/await';
+const result = await claude`Explain ${topic} with examples`;
 
 // File-based prompts
-const result = await cc.fromFile('path/to/prompt.md', {
-  variable: 'value'
+const result = await claude('prompts/analyze.md', {
+  data: { taskId: 'FEAT-123' }
 });
 ```
 
-### Validation
+### Options
 
 ```typescript
-import { z } from 'zod';
-
-// Define schemas
-const outputSchema = z.object({
-  summary: z.string(),
-  score: z.number()
+// All available options
+const result = await claude('Your prompt', {
+  // Data interpolation
+  data: { key: 'value' },
+  
+  // System configuration
+  system: 'You are a helpful assistant',
+  appendSystem: 'Be concise',
+  
+  // Tool configuration
+  tools: ['Read', 'Write', 'Bash(git:*)'],
+  disallowedTools: ['Bash(rm:*)'],
+  mcpConfig: './mcp-servers.json',
+  permissionTool: 'mcp__auth__prompt',
+  
+  // Session management
+  resume: 'session-id-here',
+  continue: true,
+  
+  // Execution control
+  maxTurns: 10,
+  mode: 'run', // 'run' | 'stream' | 'interactive'
+  includeEvents: true,
+  
+  // Other
+  verbose: true,
+  outputFormat: 'json',
+  timeout: 60000
 });
-
-// With validation
-const result = await cc.prompt`Analyze this`
-  .withSchema(outputSchema)
-  .run();
-
-// Validate results
-const validated = cc.validate(result, outputSchema);
-if (validated.success) {
-  console.log(validated.data.summary);
-}
 ```
 
 ### Streaming
 
 ```typescript
-// Async iteration
-for await (const chunk of cc.stream(cc.prompt`Tell a story`)) {
+import { stream } from 'channelcoder';
+
+// Stream responses
+for await (const chunk of stream('Generate a story')) {
   if (chunk.type === 'content') {
     process.stdout.write(chunk.content);
   }
@@ -392,7 +423,7 @@ for await (const chunk of cc.stream(cc.prompt`Tell a story`)) {
 ### Error Handling
 
 ```typescript
-const result = await cc.fromFile('prompt.md', data);
+const result = await claude('prompt.md', { data });
 
 if (!result.success) {
   console.error('Error:', result.error);
@@ -400,6 +431,46 @@ if (!result.success) {
     console.warn('Warnings:', result.warnings);
   }
 }
+
+// Check for specific conditions
+if (result.metadata?.isMaxTurns) {
+  console.log('Hit maximum turn limit');
+}
+```
+
+### Interactive Mode
+
+```typescript
+import { interactive } from 'channelcoder';
+
+// Launch Claude interactively (replaces current process)
+await interactive('Help me debug this issue');
+
+// Code below this line will NEVER execute!
+// The process is replaced by Claude using shell exec
+```
+
+**Important:** Interactive mode completely replaces your Node.js process with Claude:
+- No Node.js parent process remains in memory
+- Claude gets direct terminal control
+- Exit codes go directly to the shell
+- Perfect for long Claude sessions without memory overhead
+
+### Session Management
+
+```typescript
+// Start a conversation
+const first = await claude('Remember the number 42');
+
+// Continue the conversation
+const second = await claude('What number did I ask you to remember?', {
+  resume: first.metadata?.sessionId
+});
+
+// Continue most recent session
+const latest = await claude('Continue where we left off', {
+  continue: true
+});
 ```
 
 ## Prompt File Format
@@ -452,10 +523,13 @@ channelcoder prompt.md -t "Bash(git:*) Read Write"
 
 Use JavaScript expressions in templates:
 ```typescript
-cc.prompt`
+const isDev = true;
+const items = ['a', 'b', 'c'];
+
+await claude`
   ${isDev ? "Include debug info" : ""}
   Process ${items.length} items
-`
+`;
 ```
 
 ### 3. System Prompts
@@ -480,16 +554,18 @@ success=$(echo $result | jq -r '.success')
 ## Examples
 
 Check out the `/examples` directory for:
-- `quick-start.ts` - Simple examples to get started
-- `release.ts` - Real-world release automation example
-- `root-cause-analysis.ts` - Debug issues by tracing through codebases
-- Example prompt templates with schemas
+- `basic-usage.ts` - Simple examples to get started
+- `file-based-usage.ts` - Using file-based prompts
+- `launch-modes.ts` - Different execution modes
+- `demo-features.ts` - Feature showcase (no execution)
+- `release.ts` - Real-world release automation
 
 Run examples:
 ```bash
-bun run examples/quick-start.ts
+bun run example:quick     # Run basic examples
+bun run examples/basic-usage.ts
+bun run examples/launch-modes.ts run
 bun run examples/release.ts
-bun run examples/root-cause-analysis.ts
 ```
 
 ## License

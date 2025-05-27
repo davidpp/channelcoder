@@ -7,188 +7,128 @@
  * It demonstrates the API and shows what would be sent to Claude.
  */
 
-import { cc } from '../src/index.js';
-import { z } from 'zod';
-
 console.log('🎯 ChannelCoder Feature Demo\n');
 console.log('This demo shows SDK features without calling Claude CLI.\n');
 
-// 1. Template Literal API
-console.log('1️⃣ Template Literal API');
-console.log('------------------------');
-const name = 'Alice';
-const task = 'explain quantum computing';
-const prompt1 = cc.prompt`
-  Hi ${name}! Please ${task} in simple terms.
-`;
-console.log('Built prompt:', prompt1.toString());
+// 1. Basic Function Call
+console.log('1️⃣ Basic Function Call');
+console.log('----------------------');
+console.log('Code:');
+console.log(`  await claude('What is TypeScript?')`);
+console.log('\nThis sends a simple prompt to Claude and returns the result.');
 console.log();
 
-// 2. Fluent Builder API
-console.log('2️⃣ Fluent Builder API');
+// 2. Template Literal Support
+console.log('2️⃣ Template Literal Support');
+console.log('---------------------------');
+const language = 'TypeScript';
+const topic = 'generics';
+console.log('Code:');
+console.log(`  const language = 'TypeScript';
+  const topic = 'generics';
+  await claude\`Explain \${topic} in \${language}\``);
+console.log('\nTemplate literals are automatically interpolated.');
+console.log();
+
+// 3. File-based Prompts
+console.log('3️⃣ File-based Prompts');
 console.log('---------------------');
-const prompt2 = cc.prompt`
-  Find all TypeScript files with TODO comments.
-`
-  .withTools(['Read', 'Grep'])
-  .withSystemPrompt('Be concise and accurate.');
-
-console.log('Built prompt:', prompt2.toString());
-console.log('With tools: Read, Grep');
-console.log('With system prompt: Be concise and accurate.');
+console.log('Code:');
+console.log(`  await claude('prompts/analyze.md', {
+    data: { taskId: 'FEAT-123', priority: 'high' }
+  })`);
+console.log('\nFiles ending in .md are loaded and variables are interpolated.');
 console.log();
 
-// 3. Variable Interpolation Features
-console.log('3️⃣ Variable Interpolation');
-console.log('-------------------------');
-const config = {
-  port: 3000,
-  host: 'localhost',
-  ssl: true
-};
-const isProduction = true;
-const features = ['auth', 'api', 'dashboard'];
-
-const prompt3 = cc.prompt`
-  Server Configuration:
-  ${JSON.stringify(config, null, 2)}
-  
-  Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}
-  
-  Active Features:
-  ${features.map(f => `- ${f}`).join('\n')}
-`;
-console.log('Built prompt:');
-console.log(prompt3.toString());
-console.log();
-
-// 4. Schema Validation
-console.log('4️⃣ Schema Validation');
+// 4. Options and Tools
+console.log('4️⃣ Options and Tools');
 console.log('--------------------');
-const UserSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(1),
-  email: z.string().email(),
-  role: z.enum(['admin', 'user', 'guest'])
-});
-
-const prompt4 = cc.prompt`
-  Create a new user with the following details:
-  - Name: John Doe
-  - Email: john@example.com
-  - Role: admin
-  
-  Return as JSON matching the schema.
-`.withSchema(UserSchema);
-
-console.log('Built prompt with output schema validation');
-console.log('Expected output schema:', JSON.stringify({
-  id: 'string (uuid)',
-  name: 'string (min: 1)',
-  email: 'string (email)',
-  role: 'admin | user | guest'
-}, null, 2));
+console.log('Code:');
+console.log(`  await claude('Review this code', {
+    tools: ['Read', 'Grep'],
+    system: 'You are a code reviewer',
+    maxTurns: 10
+  })`);
+console.log('\nOptions map directly to Claude CLI flags.');
 console.log();
 
-// 5. Conditional Content
-console.log('5️⃣ Conditional Content');
-console.log('----------------------');
-const includeDetails = true;
-const debugMode = false;
-const priority = 'high';
-
-const prompt5 = cc.prompt`
-  Analyze the system performance.
-  
-  ${includeDetails ? `Include detailed metrics for:
-  - CPU usage
-  - Memory consumption
-  - Network latency` : 'Provide summary only.'}
-  
-  ${debugMode ? 'Enable debug logging.' : ''}
-  
-  ${priority === 'high' ? '⚠️ This is a HIGH PRIORITY request!' : ''}
-`;
-console.log('Built prompt:');
-console.log(prompt5.toString());
+// 5. Execution Modes
+console.log('5️⃣ Execution Modes');
+console.log('------------------');
+console.log('Code:');
+console.log(`  // Different ways to execute
+  await run('Quick analysis')         // Get result
+  await interactive('Debug session')  // Interactive mode
+  for await (const chunk of stream('Generate code')) {
+    console.log(chunk.content)        // Stream output
+  }`);
 console.log();
 
-// 6. File-based Prompts (showing the structure)
-console.log('6️⃣ File-based Prompts');
+// 6. Data Interpolation
+console.log('6️⃣ Data Interpolation');
 console.log('---------------------');
-console.log('Example prompt file structure:');
-console.log(`
----
-input:
-  taskId: string
-  priority?: string
-  tags: string[]
-output:
-  success: boolean
-  result: string
-systemPrompt: "You are a helpful assistant"
-allowedTools:
-  - Read
-  - Write
----
-
-# Task Analysis for \${taskId}
-
-Priority: \${priority || "normal"}
-Tags: \${tags.join(", ")}
-
-Please analyze this task...
-`);
+console.log('Code:');
+console.log(`  await claude('Analyze {code} for {issues}', {
+    data: {
+      code: 'const x = null',
+      issues: ['null safety', 'type errors']
+    }
+  })`);
+console.log('\nVariables in {} are replaced with data values.');
 console.log();
 
-// 7. Complex Nested Data
-console.log('7️⃣ Complex Nested Data');
-console.log('----------------------');
-const project = {
-  name: 'ChannelCoder',
-  version: '1.0.0',
-  dependencies: {
-    zod: '^3.22.0',
-    'gray-matter': '^4.0.3'
-  },
-  scripts: {
-    build: 'tsc',
-    test: 'vitest'
-  }
-};
-
-const prompt7 = cc.prompt`
-  Review this package.json:
-  ${JSON.stringify(project, null, 2)}
-  
-  Check for:
-  ${project.dependencies ? `- ${Object.keys(project.dependencies).length} dependencies` : '- No dependencies'}
-  ${project.scripts ? `- ${Object.keys(project.scripts).length} scripts defined` : '- No scripts'}
-`;
-console.log('Built prompt with nested data:');
-console.log(prompt7.toString().substring(0, 200) + '...');
+// 7. Session Continuation
+console.log('7️⃣ Session Continuation');
+console.log('-----------------------');
+console.log('Code:');
+console.log(`  const first = await claude('Remember: 42');
+  const second = await claude('What number?', {
+    resume: first.metadata?.sessionId
+  })`);
+console.log('\nSessions allow multi-turn conversations.');
 console.log();
 
-// 8. Array Processing
-console.log('8️⃣ Array Processing');
-console.log('-------------------');
-const errors = [
-  { file: 'app.ts', line: 42, message: 'Type error' },
-  { file: 'utils.ts', line: 13, message: 'Undefined variable' }
-];
+// 8. Tool Restrictions
+console.log('8️⃣ Tool Restrictions');
+console.log('--------------------');
+console.log('Code:');
+console.log(`  await claude('Analyze git history', {
+    tools: ['Bash(git:*)', 'Read(**/*.ts)']
+  })`);
+console.log('\nTools can be restricted using Claude\'s pattern syntax.');
+console.log();
 
-const prompt8 = cc.prompt`
-  Fix these errors:
-  
-  ${errors.map((err, i) => `${i + 1}. ${err.file}:${err.line} - ${err.message}`).join('\n')}
-  
-  Total errors: ${errors.length}
-`;
-console.log('Built prompt:');
-console.log(prompt8.toString());
+// 9. MCP Configuration
+console.log('9️⃣ MCP Configuration');
+console.log('--------------------');
+console.log('Code:');
+console.log(`  await claude('Use custom tool', {
+    mcpConfig: 'mcp-servers.json',
+    tools: ['mcp__custom__action']
+  })`);
+console.log('\nMCP servers extend Claude with custom tools.');
+console.log();
+
+// 10. Prompt File Structure
+console.log('🔟 Prompt File Structure');
+console.log('-----------------------');
+console.log('Example analyze.md:');
+console.log(`---
+tools: [Read, Write]
+system: Be concise
+---
+
+# Analyze Task {taskId}
+
+Priority: {priority || 'normal'}
+
+{#if includeDetails}
+Include full analysis
+{#endif}`);
+console.log('\nFrontmatter configures the prompt, body uses variables.');
 console.log();
 
 console.log('✅ Demo completed!');
-console.log('\nThis demo showed ChannelCoder features without calling Claude CLI.');
-console.log('To actually execute prompts, you need Claude CLI installed and configured.');
-console.log('\nSee examples/quick-start.ts for executable examples.');
+console.log('\nThis demo showed ChannelCoder\'s function-based API.');
+console.log('To execute prompts, you need Claude CLI installed.');
+console.log('\nRun examples with: bun run example:quick');
