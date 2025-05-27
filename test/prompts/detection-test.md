@@ -1,0 +1,5 @@
+---
+allowedTools: [Read]
+---
+
+# Test

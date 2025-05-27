@@ -69,14 +69,15 @@ function convertOptions(options: ClaudeOptions): CCOptions & PromptConfig {
     timeout: options.timeout || 120000, // 2 minutes default
   };
 
-  const promptConfig: PromptConfig = {
-    systemPrompt: options.system,
-    appendSystemPrompt: options.appendSystem,
-    allowedTools: options.tools,
-    disallowedTools: options.disallowedTools,
-    mcpConfig: options.mcpConfig,
-    permissionPromptTool: options.permissionTool,
-  };
+  const promptConfig: PromptConfig = {};
+  
+  // Only add defined values to avoid overwriting frontmatter with undefined
+  if (options.system !== undefined) promptConfig.systemPrompt = options.system;
+  if (options.appendSystem !== undefined) promptConfig.appendSystemPrompt = options.appendSystem;
+  if (options.tools !== undefined) promptConfig.allowedTools = options.tools;
+  if (options.disallowedTools !== undefined) promptConfig.disallowedTools = options.disallowedTools;
+  if (options.mcpConfig !== undefined) promptConfig.mcpConfig = options.mcpConfig;
+  if (options.permissionTool !== undefined) promptConfig.permissionPromptTool = options.permissionTool;
 
   return { ...ccOptions, ...promptConfig };
 }

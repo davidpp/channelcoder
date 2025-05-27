@@ -1,38 +1,10 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, rmSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { describe, expect, test } from 'bun:test';
 import { claude } from '../src/functions.js';
 
-const testDir = './test-tmp-validation';
-
 describe('input validation with Zod schemas', () => {
-  beforeEach(() => {
-    mkdirSync(testDir, { recursive: true });
-  });
-
-  afterEach(() => {
-    rmSync(testDir, { recursive: true, force: true });
-  });
-
   test('validates required fields in prompt file', async () => {
-    // Create a prompt with required fields
-    const promptPath = join(testDir, 'validated.md');
-    writeFileSync(
-      promptPath,
-      `---
-input:
-  taskId: string
-  priority: string
-  tags: string[]
----
-
-Analyzing task {taskId} with priority {priority}
-Tags: {tags}
-`
-    );
-
     // Test with missing required field
-    const result = await claude(promptPath, {
+    const result = await claude('./test/prompts/validated.md', {
       dryRun: true,
       data: {
         // Missing taskId!
@@ -47,22 +19,8 @@ Tags: {tags}
   });
 
   test('validates optional fields correctly', async () => {
-    const promptPath = join(testDir, 'optional.md');
-    writeFileSync(
-      promptPath,
-      `---
-input:
-  name: string
-  age?: number
-  active?: boolean
----
-
-Hello {name}, age: {age || 'unknown'}
-`
-    );
-
     // Should work without optional fields
-    const result = await claude(promptPath, {
+    const result = await claude('./test/prompts/optional.md', {
       dryRun: true,
       data: {
         name: 'Alice',
@@ -74,22 +32,8 @@ Hello {name}, age: {age || 'unknown'}
   });
 
   test('validates data types correctly', async () => {
-    const promptPath = join(testDir, 'types.md');
-    writeFileSync(
-      promptPath,
-      `---
-input:
-  count: number
-  active: boolean
-  items: string[]
----
-
-Count: {count}, Active: {active}, Items: {items}
-`
-    );
-
     // Test with wrong types
-    const result = await claude(promptPath, {
+    const result = await claude('./test/prompts/types.md', {
       dryRun: true,
       data: {
         count: 'not a number', // Wrong type!
@@ -103,26 +47,8 @@ Count: {count}, Active: {active}, Items: {items}
   });
 
   test('validates nested objects', async () => {
-    const promptPath = join(testDir, 'nested.md');
-    writeFileSync(
-      promptPath,
-      `---
-input:
-  user:
-    name: string
-    email: string
-  settings:
-    theme: string
-    notifications: boolean
----
-
-User: {user.name} ({user.email})
-Theme: {settings.theme}
-`
-    );
-
     // Test with valid nested data
-    const result1 = await claude(promptPath, {
+    const result1 = await claude('./test/prompts/nested.md', {
       dryRun: true,
       data: {
         user: {
@@ -136,11 +62,13 @@ Theme: {settings.theme}
       },
     });
     
+    // TODO: This test fails due to nested object validation not being supported
+    // See test/BUGS.md for details
     expect(result1.success).toBe(true);
     expect(result1.data.fullCommand).toMatchSnapshot();
 
     // Test with missing nested field
-    const result2 = await claude(promptPath, {
+    const result2 = await claude('./test/prompts/nested.md', {
       dryRun: true,
       data: {
         user: {
@@ -160,19 +88,8 @@ Theme: {settings.theme}
   });
 
   test('no validation when schema not provided', async () => {
-    const promptPath = join(testDir, 'no-schema.md');
-    writeFileSync(
-      promptPath,
-      `---
-tools: [Read]
----
-
-Analyze {anything} with {whatever}
-`
-    );
-
     // Should work with any data when no schema
-    const result = await claude(promptPath, {
+    const result = await claude('./test/prompts/no-schema.md', {
       dryRun: true,
       data: {
         anything: 123,
@@ -186,19 +103,7 @@ Analyze {anything} with {whatever}
   });
 
   test('frontmatter system prompt works', async () => {
-    const promptPath = join(testDir, 'system.md');
-    writeFileSync(
-      promptPath,
-      `---
-systemPrompt: You are a helpful assistant
-allowedTools: [Read, Write]
----
-
-Help me with {task}
-`
-    );
-
-    const result = await claude(promptPath, {
+    const result = await claude('./test/prompts/system.md', {
       dryRun: true,
       data: { task: 'debugging' },
     });

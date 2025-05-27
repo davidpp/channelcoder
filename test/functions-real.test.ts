@@ -1,41 +1,7 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, rmSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { describe, expect, test } from 'bun:test';
 import { claude, interactive, run, stream } from '../src/functions.js';
 
-// Create a temporary test directory
-const testDir = './test-tmp';
-const testPromptPath = join(testDir, 'test-prompt.md');
-
 describe('claude function - dry-run command generation', () => {
-  // Setup test files
-  beforeEach(() => {
-    mkdirSync(testDir, { recursive: true });
-
-    // Create a test prompt file
-    writeFileSync(
-      testPromptPath,
-      `---
-allowedTools: [Read, Write]
-systemPrompt: Test system prompt
----
-
-# Test Prompt
-
-Task ID: {taskId}
-Priority: {priority || 'normal'}
-
-{#if includeDetails}
-This includes details.
-{#endif}
-`
-    );
-  });
-
-  // Cleanup
-  afterEach(() => {
-    rmSync(testDir, { recursive: true, force: true });
-  });
 
   test('simple inline prompt', async () => {
     const result = await claude('What is 2+2?', { dryRun: true });
@@ -70,7 +36,7 @@ This includes details.
   });
 
   test('file-based prompt', async () => {
-    const result = await claude(testPromptPath, {
+    const result = await claude('./test/prompts/test-prompt.md', {
       dryRun: true,
       data: {
         taskId: 'TEST-123',
@@ -82,7 +48,7 @@ This includes details.
   });
 
   test('file-based prompt with merged options', async () => {
-    const result = await claude(testPromptPath, {
+    const result = await claude('./test/prompts/test-prompt.md', {
       dryRun: true,
       data: { taskId: 'TEST-456' },
       tools: ['Bash'], // This should be added to file's allowedTools
@@ -108,12 +74,8 @@ This includes details.
   });
 
   test('file detection works correctly', async () => {
-    // Create a test file
-    const testFile = join(testDir, 'detection-test.md');
-    writeFileSync(testFile, '# Test');
-    
     // Test that it detects as file and processes correctly
-    const result = await claude(testFile, { dryRun: true });
+    const result = await claude('./test/prompts/detection-test.md', { dryRun: true });
     expect(result.success).toBe(true);
     expect(result.data.fullCommand).toContain('echo -e');
     

@@ -1,9 +1,9 @@
 // Bun Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`input validation with Zod schemas validates optional fields correctly 1`] = `"echo -e "Content" | claude -p --output-format json"`;
+exports[`input validation with Zod schemas validates optional fields correctly 1`] = `"echo -e "\\nHello Alice, age: {age || 'unknown'}" | claude -p --output-format json"`;
+
+exports[`input validation with Zod schemas no validation when schema not provided 1`] = `"echo -e "\\nAnalyze 123 with {\\n  \\"nested\\": true\\n}" | claude -p --allowedTools Read --output-format json"`;
+
+exports[`input validation with Zod schemas frontmatter system prompt works 1`] = `"echo -e "\\nHelp me with debugging" | claude -p --system-prompt "You are a helpful assistant" --allowedTools Read,Write --output-format json"`;
 
 exports[`input validation with Zod schemas validates nested objects 1`] = `"echo -e "Content" | claude -p --output-format json"`;
-
-exports[`input validation with Zod schemas no validation when schema not provided 1`] = `"echo -e "Content" | claude -p --output-format json"`;
-
-exports[`input validation with Zod schemas frontmatter system prompt works 1`] = `"echo -e "Content" | claude -p --output-format json"`;
