@@ -215,25 +215,44 @@ async function main() {
     }
 
     // Launch Claude interactively
-    let launchResult: Awaited<ReturnType<typeof interactive>>;
-
+    // Note: interactive() replaces the current process, so code after this won't execute
     if (values.prompt) {
       // Inline prompt
-      launchResult = await interactive(values.prompt, options);
+      await interactive(values.prompt, options);
     } else {
       // File-based prompt
       const promptFile = resolve(positionals[0]);
-      launchResult = await interactive(promptFile, options);
+      await interactive(promptFile, options);
     }
 
-    if (launchResult.error) {
-      console.error('Error launching Claude:', launchResult.error);
-      process.exit(1);
-    }
-
-    process.exit(launchResult.exitCode || 0);
+    // This code will never be reached because interactive() replaces the process
+    console.error('❌ ERROR: Interactive mode failed to replace process');
+    process.exit(1);
   } catch (error) {
-    console.error('❌ Fatal error:', error);
+    if (error instanceof Error) {
+      // Check for common errors and provide helpful messages
+      if (error.message.includes('ENOENT') || error.message.includes('no such file')) {
+        const fileMatch = error.message.match(/Failed to load prompt file ([^:]+)/);
+        if (fileMatch) {
+          console.error(`❌ Error: Prompt file not found: ${fileMatch[1]}`);
+          console.error('💡 Make sure the file exists or use -p for inline prompts');
+        } else {
+          console.error('❌ Error: File not found');
+          console.error(error.message);
+        }
+      } else if (error.message.includes('Input validation failed')) {
+        console.error(`❌ ${error.message}`);
+        console.error('💡 Check that all required fields are provided with -d');
+      } else if (error.message.includes('Failed to launch Claude')) {
+        console.error('❌ Error: Failed to launch Claude CLI');
+        console.error('💡 Make sure Claude CLI is installed: npm install -g @anthropic-ai/claude-code');
+      } else {
+        // Other errors - show message without stack trace
+        console.error('❌ Error:', error.message);
+      }
+    } else {
+      console.error('❌ Fatal error:', error);
+    }
     process.exit(1);
   }
 }
