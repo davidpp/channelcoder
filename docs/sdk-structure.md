@@ -53,6 +53,45 @@ await claude('prompts/analyze.md', {
 });
 ```
 
+#### Mode Behavior
+
+Each mode generates different Claude CLI commands:
+
+1. **`run` mode (default)**: Non-interactive execution with `--print` flag
+   - Executes autonomously and returns the complete result
+   - Command: `echo "prompt" | claude --print [options]`
+   - Returns: `CCResult` with parsed response
+
+2. **`stream` mode**: Non-interactive streaming with `--print` and `--output-format stream-json`
+   - Yields real-time chunks as Claude processes
+   - Command: `echo "prompt" | claude --print --output-format stream-json [options]`
+   - Returns: AsyncIterable of `StreamChunk`
+
+3. **`interactive` mode**: Launches Claude interactively WITHOUT `--print`
+   - Replaces the current process using shell `exec`
+   - Command: `exec echo "prompt" | exec claude [options]`
+   - Never returns - process is replaced
+
+#### Resume/Continue Behavior
+
+All modes support session continuation:
+
+```typescript
+// Run mode with resume
+await run('Continue analysis', { resume: sessionId });
+// Command: claude --print --resume SESSION_ID
+
+// Stream mode with continue
+await stream('Continue', { continue: true });
+// Command: claude --print --output-format stream-json --continue
+
+// Interactive mode with resume (no prompt needed)
+await interactive('', { resume: sessionId });
+// Command: exec claude --resume SESSION_ID
+```
+
+Note: When resuming/continuing, no prompt is piped to stdin.
+
 ## Options Object
 
 The options object maps closely to Claude CLI flags:
@@ -140,15 +179,21 @@ interface StreamChunk {
 ### Interactive Launch
 
 ```typescript
-// Interactive mode returns launch result
-const result = await interactive('prompt', options);
+// Interactive mode replaces the current process
+await interactive('prompt', options);
+// This line is never reached - process is replaced
 
 interface LaunchResult {
-  pid?: number;        // Process ID (detached mode)
-  exitCode?: number;   // Exit code (interactive mode)
-  error?: string;      // Launch error if any
+  error?: string;      // Launch error if any (only returned on failure)
+  exitCode?: number;   // Exit code (only for compatibility, rarely used)
 }
 ```
+
+**Important**: Interactive mode uses shell `exec` to replace the Node.js process with Claude. This means:
+- No Node.js parent process remains in memory
+- Direct signal handling by Claude
+- Exit codes go directly to the shell
+- Code after `interactive()` is never executed
 
 ## File Detection
 
@@ -317,6 +362,76 @@ const result = await claude('file.md', { data });
 await claude`Hello ${name}`;
 ```
 
+## Implementation Details
+
+### Command Building Strategy
+
+The SDK builds Claude CLI commands differently based on the execution mode:
+
+```typescript
+// buildCommand() in process.ts
+async buildCommand(options: CCOptions & PromptConfig): Promise<string[]> {
+  const cmd = ['claude'];
+  
+  // Handle conversation resumption
+  if (options.resume) {
+    cmd.push('--resume', options.resume);
+  } else if (options.continue) {
+    cmd.push('--continue');
+  }
+  
+  // Only add --print for non-interactive modes
+  if (options.mode !== 'interactive') {
+    cmd.push('--print');
+  }
+  
+  // Add other options...
+  return cmd;
+}
+```
+
+### Prompt Handling
+
+All prompts are piped via stdin to avoid shell escaping issues:
+
+```typescript
+// Bad: Passing prompt as argument (shell escaping nightmares)
+claude "This prompt has 'quotes' and $variables"
+
+// Good: Piping prompt via stdin (safe)
+echo "This prompt has 'quotes' and $variables" | claude --print
+```
+
+This is why:
+1. Prompts can contain quotes, newlines, and special characters
+2. Shell escaping is complex and error-prone
+3. Piping via stdin is consistent and safe
+
+### Interactive Mode Process Replacement
+
+Interactive mode uses shell `exec` to truly replace the process:
+
+```typescript
+// launchInteractive implementation
+const shellCommand = `exec echo '${escapedPrompt}' | exec claude ${escapedArgs}`;
+execSync(shellCommand, { stdio: 'inherit', shell: true });
+```
+
+Benefits:
+- No Node.js wrapper process consuming memory
+- Direct signal handling (Ctrl+C, etc.)
+- Clean process management for long sessions
+- Exit codes go directly to the shell
+
+### Mode Detection Flow
+
+1. User calls `claude()`, `run()`, `stream()`, or `interactive()`
+2. Mode is set in options or inferred from function
+3. `buildCommand()` checks mode to decide on `--print` flag
+4. Execution method varies by mode:
+   - run/stream: Use `spawn` with pipes
+   - interactive: Use `execSync` with shell exec
+
 ## Design Rationale
 
 1. **Function over classes**: Modern JavaScript favors functions and modules over classes
@@ -324,6 +439,7 @@ await claude`Hello ${name}`;
 3. **CLI familiarity**: Developers who know Claude CLI can immediately use the SDK
 4. **Wrapper-friendly**: Easy to build domain-specific abstractions
 5. **Tree-shakeable**: Import only what you use
+6. **Process efficiency**: Interactive mode replaces process to avoid memory overhead
 
 ## Future Compatibility
 

@@ -30,16 +30,13 @@ try {
   console.log('🤖 Launching Claude with implementation prompt...\n');
 
   // Use the new SDK with interactive mode
-  const result = await interactive('prompts/implement.md', {
+  // This will replace the current process, so no code after this will execute
+  await interactive('prompts/implement.md', {
     data: { taskContent },
   });
-
-  console.log('Result:', result);
-
-  if (result.exitCode !== 0) {
-    process.exit(result.exitCode || 1);
-  }
 } catch (error) {
+  // This will only catch errors before interactive() is called
+  // (e.g., sc command failures or file loading errors)
   if (error instanceof Error) {
     console.error('❌ Error:', error.message);
   } else {

@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { execSync, spawn, spawnSync } from 'node:child_process';
 import { openSync, writeSync } from 'node:fs';
 import { loadPromptFile } from './loader.js';
 import { CCProcess } from './process.js';
@@ -19,7 +19,7 @@ import { validateInput } from './utils/validation.js';
  */
 export interface ClaudeOptions {
   // Data & Prompts
-  data?: Record<string, any>; // Variable interpolation
+  data?: InterpolationData; // Variable interpolation
   system?: string; // System prompt (inline or .md file)
   appendSystem?: string; // Append to system prompt
 
@@ -70,14 +70,15 @@ function convertOptions(options: ClaudeOptions): CCOptions & PromptConfig {
   };
 
   const promptConfig: PromptConfig = {};
-  
+
   // Only add defined values to avoid overwriting frontmatter with undefined
   if (options.system !== undefined) promptConfig.systemPrompt = options.system;
   if (options.appendSystem !== undefined) promptConfig.appendSystemPrompt = options.appendSystem;
   if (options.tools !== undefined) promptConfig.allowedTools = options.tools;
   if (options.disallowedTools !== undefined) promptConfig.disallowedTools = options.disallowedTools;
   if (options.mcpConfig !== undefined) promptConfig.mcpConfig = options.mcpConfig;
-  if (options.permissionTool !== undefined) promptConfig.permissionPromptTool = options.permissionTool;
+  if (options.permissionTool !== undefined)
+    promptConfig.permissionPromptTool = options.permissionTool;
 
   return { ...ccOptions, ...promptConfig };
 }
@@ -130,16 +131,18 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
   // Handle dry-run mode
   if (options.dryRun) {
     const args = await process.buildCommand(mergedOptions);
-    
+
     // Build the base command
-    const baseCommand = args.map(arg => {
-      // Escape arguments that contain spaces or special characters
-      if (arg.includes(' ') || arg.includes('"') || arg.includes("'")) {
-        return `"${arg.replace(/"/g, '\\"')}"`;
-      }
-      return arg;
-    }).join(' ');
-    
+    const baseCommand = args
+      .map((arg) => {
+        // Escape arguments that contain spaces or special characters
+        if (arg.includes(' ') || arg.includes('"') || arg.includes("'")) {
+          return `"${arg.replace(/"/g, '\\"')}"`;
+        }
+        return arg;
+      })
+      .join(' ');
+
     // Create the full command with piped input
     let fullCommand: string;
     if (!mergedOptions.resume && !mergedOptions.continue) {
@@ -150,14 +153,14 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
         .replace(/\$/g, '\\$')
         .replace(/`/g, '\\`')
         .replace(/\n/g, '\\n');
-      
+
       // Use echo -e to handle newlines properly
       fullCommand = `echo -e "${escapedPrompt}" | ${baseCommand}`;
     } else {
       // For resume/continue, no prompt is needed
       fullCommand = baseCommand;
     }
-    
+
     return {
       success: true,
       data: {
@@ -171,14 +174,15 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
 
   // Execute based on mode
   switch (mode) {
-    case 'interactive':
+    case 'interactive': {
       const launchResult = await launchInteractive(prompt, mergedOptions);
       return {
         success: launchResult.exitCode === 0,
         error: launchResult.error,
       };
+    }
 
-    case 'stream':
+    case 'stream': {
       // Collect stream chunks into result
       const chunks: string[] = [];
       for await (const chunk of process.stream(prompt, mergedOptions)) {
@@ -188,6 +192,7 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
         success: true,
         data: chunks.join(''),
       };
+    }
 
     default:
       return process.execute(prompt, mergedOptions);
@@ -202,34 +207,41 @@ async function launchInteractive(
   options: CCOptions & PromptConfig
 ): Promise<LaunchResult> {
   try {
-    const process = new CCProcess(options);
-    const args = await process.buildCommand(options);
-
-    // Add prompt if not resuming/continuing
-    if (!options.resume && !options.continue) {
-      const promptIndex = args.indexOf('-p');
-      if (promptIndex >= 0 && promptIndex < args.length - 1) {
-        args[promptIndex + 1] = prompt;
-      }
-    }
+    const process = new CCProcess({ ...options, mode: 'interactive' });
+    const args = await process.buildCommand({ ...options, mode: 'interactive' });
 
     // Remove 'claude' from args as it's the command
     const claudeArgs = args.slice(1);
 
-    // Interactive mode - inherit stdio
-    const result = spawnSync('claude', claudeArgs, {
+    // Helper to escape single quotes for shell
+    const escapeShell = (str: string) => str.replace(/'/g, "'\\''");
+
+    // Build shell command with exec to replace process
+    let shellCommand: string;
+
+    if (prompt && !options.resume && !options.continue) {
+      // Use exec with echo piped to claude
+      const escapedPrompt = escapeShell(prompt);
+      const escapedArgs = claudeArgs.map((arg) => `'${escapeShell(arg)}'`).join(' ');
+      shellCommand = `exec echo '${escapedPrompt}' | exec claude ${escapedArgs}`;
+    } else {
+      // No prompt - just exec claude directly
+      const escapedArgs = claudeArgs.map((arg) => `'${escapeShell(arg)}'`).join(' ');
+      shellCommand = `exec claude ${escapedArgs}`;
+    }
+
+    // Execute with shell, this replaces the current process
+    execSync(shellCommand, {
       stdio: 'inherit',
     });
 
-    if (result.error) {
-      return { error: result.error.message };
-    }
-
-    return { exitCode: result.status ?? undefined };
+    // This line will never be reached because exec replaces the process
+    // But TypeScript needs a return
+    return { exitCode: 0 };
   } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : String(error),
-    };
+    // This will only execute if execSync fails to launch
+    console.error('Failed to launch Claude:', error);
+    process.exit(1);
   }
 }
 
@@ -257,15 +269,18 @@ const templateHandler = (
  */
 export const claude: ClaudeFunction = ((
   promptOrFileOrStrings: string | TemplateStringsArray,
-  ...args: any[]
+  ...args: unknown[]
 ): Promise<CCResult> => {
   // Check if called as template literal
   if (Array.isArray(promptOrFileOrStrings) && 'raw' in promptOrFileOrStrings) {
-    return templateHandler(promptOrFileOrStrings as TemplateStringsArray, ...args);
+    return templateHandler(
+      promptOrFileOrStrings as TemplateStringsArray,
+      ...(args as InterpolationValue[])
+    );
   }
 
   // Otherwise it's a normal function call
-  return claudeImpl(promptOrFileOrStrings as string, args[0]);
+  return claudeImpl(promptOrFileOrStrings as string, args[0] as ClaudeOptions);
 }) as ClaudeFunction;
 
 /**
@@ -313,7 +328,7 @@ export async function* stream(
 ): AsyncIterable<StreamChunk> {
   const template = new PromptTemplate();
   const ccOptions = convertOptions(options);
-  const process = new CCProcess(ccOptions);
+  const process = new CCProcess({ ...ccOptions, mode: 'stream' });
 
   let prompt: string;
   let mergedOptions = ccOptions;
@@ -341,7 +356,7 @@ export async function* stream(
     prompt = template.interpolate(promptOrFile, options.data || {});
   }
 
-  yield* process.stream(prompt, mergedOptions);
+  yield* process.stream(prompt, { ...mergedOptions, mode: 'stream' });
 }
 
 /**

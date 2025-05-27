@@ -314,14 +314,16 @@ export class CCProcess {
   async buildCommand(options: CCOptions & PromptConfig): Promise<string[]> {
     const cmd = ['claude'];
 
-    // Conversation options (must come before -p)
+    // Conversation options
     if (options.resume) {
       cmd.push('--resume', options.resume);
     } else if (options.continue) {
       cmd.push('--continue');
-    } else {
-      // Only add -p flag if not resuming/continuing
-      cmd.push('-p');
+    }
+
+    // Only add --print flag for non-interactive modes
+    if (options.mode !== 'interactive') {
+      cmd.push('--print');
     }
 
     // System prompt options

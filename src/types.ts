@@ -54,6 +54,9 @@ export interface CCOptions {
   resume?: string; // Resume by session ID
   continue?: boolean; // Continue most recent conversation
   maxTurns?: number; // Limit agentic turns in non-interactive mode
+
+  // Execution mode
+  mode?: 'run' | 'stream' | 'interactive';
 }
 
 /**
