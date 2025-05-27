@@ -5,7 +5,7 @@
  */
 
 // Export main functions
-export { claude, interactive, stream, run, type ClaudeOptions } from './functions.js';
+export { claude, interactive, stream, run, detached, type ClaudeOptions } from './functions.js';
 
 // Export types
 export type {

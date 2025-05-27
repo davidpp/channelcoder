@@ -1,0 +1,8 @@
+{
+  "id": "idea-test-1748360993376-3",
+  "title": "API-Rate-Limiting",
+  "description": "Implement rate limiting with Redis to prevent API abuse",
+  "status": "running",
+  "startTime": 1748361060452,
+  "logFile": ".idea-explorer/jobs/idea-test-1748360993376-3/output.log"
+}

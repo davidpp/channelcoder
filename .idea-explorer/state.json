@@ -1,0 +1,55 @@
+{
+  "queue": [
+    {
+      "id": "idea-test-1748360993376-0",
+      "title": "OAuth-Integration",
+      "description": "Add GitHub and Google OAuth support to the application",
+      "status": "completed",
+      "startTime": 1748361014436,
+      "logFile": ".idea-explorer/jobs/idea-test-1748360993376-0/output.log",
+      "pid": 32156,
+      "endTime": 1748361066451
+    },
+    {
+      "id": "idea-test-1748360993376-1",
+      "title": "Dark-Mode",
+      "description": "Implement theme switching with CSS variables and user preference persistence",
+      "status": "completed",
+      "startTime": 1748361016436,
+      "logFile": ".idea-explorer/jobs/idea-test-1748360993376-1/output.log",
+      "pid": 32334,
+      "endTime": 1748361060449
+    },
+    {
+      "id": "idea-test-1748360993376-2",
+      "title": "Real-time-Updates",
+      "description": "Add WebSocket support for live notifications and data updates",
+      "status": "completed",
+      "startTime": 1748361018436,
+      "logFile": ".idea-explorer/jobs/idea-test-1748360993376-2/output.log",
+      "pid": 32511,
+      "endTime": 1748361105462
+    },
+    {
+      "id": "idea-test-1748360993376-3",
+      "title": "API-Rate-Limiting",
+      "description": "Implement rate limiting with Redis to prevent API abuse",
+      "status": "completed",
+      "startTime": 1748361060451,
+      "logFile": ".idea-explorer/jobs/idea-test-1748360993376-3/output.log",
+      "pid": 32916,
+      "endTime": 1748361180490
+    },
+    {
+      "id": "idea-test-1748360993376-4",
+      "title": "Search-Feature",
+      "description": "Add full-text search using PostgreSQL or Elasticsearch",
+      "status": "completed",
+      "startTime": 1748361066453,
+      "logFile": ".idea-explorer/jobs/idea-test-1748360993376-4/output.log",
+      "pid": 33121,
+      "endTime": 1748361108464
+    }
+  ],
+  "parallelism": 3
+}

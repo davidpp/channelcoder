@@ -19,6 +19,9 @@
       "peerDependencies": {
         "bun": ">=1.0.0",
       },
+      "optionalPeers": [
+        "bun",
+      ],
     },
   },
   "packages": {

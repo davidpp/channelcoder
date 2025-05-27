@@ -1,5 +1,5 @@
 import { execSync, spawn, spawnSync } from 'node:child_process';
-import { openSync, writeSync } from 'node:fs';
+import { openSync, writeSync, closeSync } from 'node:fs';
 import { loadPromptFile } from './loader.js';
 import { CCProcess } from './process.js';
 import { PromptTemplate } from './template.js';
@@ -43,6 +43,11 @@ export interface ClaudeOptions {
   outputFormat?: 'json' | 'text'; // Output format
   timeout?: number; // Timeout in milliseconds
   dryRun?: boolean; // Return command instead of executing
+  parse?: boolean; // Parse JSON messages in stream mode (default: false)
+  
+  // Process control
+  detached?: boolean; // Run in detached mode (background)
+  logFile?: string; // Log file path for detached mode output
 }
 
 // Internal: Detect if input is a file path
@@ -66,7 +71,7 @@ function convertOptions(options: ClaudeOptions): CCOptions & PromptConfig {
     resume: options.resume,
     continue: options.continue,
     maxTurns: options.maxTurns,
-    timeout: options.timeout || 120000, // 2 minutes default
+    timeout: options.timeout, // No default timeout
   };
 
   const promptConfig: PromptConfig = {};
@@ -168,6 +173,49 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
         args: args.slice(1),
         fullCommand,
         prompt, // Include raw prompt for reference
+      },
+    };
+  }
+
+  // Handle detached mode
+  if (options.detached) {
+    const args = await process.buildCommand(mergedOptions);
+    
+    // Set up stdio based on logFile
+    let stdio: any = 'ignore';
+    let logFd: number | undefined;
+    
+    if (options.logFile) {
+      // Open log file for writing (append mode)
+      logFd = openSync(options.logFile, 'a');
+      stdio = ['pipe', logFd, logFd];
+    }
+    
+    const child = spawn(args[0], args.slice(1), {
+      detached: true,
+      stdio,
+    });
+    
+    // Write prompt to stdin if needed
+    if (child.stdin && !mergedOptions.resume && !mergedOptions.continue) {
+      child.stdin.write(prompt);
+      child.stdin.end();
+    }
+    
+    // Unref to allow parent to exit
+    child.unref();
+    
+    // Close log file descriptor if opened
+    if (logFd !== undefined) {
+      closeSync(logFd);
+    }
+    
+    return {
+      success: true,
+      data: {
+        pid: child.pid,
+        detached: true,
+        logFile: options.logFile,
       },
     };
   }
@@ -356,7 +404,7 @@ export async function* stream(
     prompt = template.interpolate(promptOrFile, options.data || {});
   }
 
-  yield* process.stream(prompt, { ...mergedOptions, mode: 'stream' });
+  yield* process.stream(prompt, { ...mergedOptions, mode: 'stream', parse: options.parse });
 }
 
 /**
@@ -364,4 +412,25 @@ export async function* stream(
  */
 export async function run(promptOrFile: string, options: ClaudeOptions = {}): Promise<CCResult> {
   return claude(promptOrFile, { ...options, mode: 'run' });
+}
+
+/**
+ * Detached mode shortcut - runs Claude in background
+ * 
+ * @example
+ * // Run in background
+ * const result = await detached('prompt.md');
+ * console.log('Started with PID:', result.data.pid);
+ * 
+ * // Run with logging
+ * await detached('long-task.md', { 
+ *   logFile: 'output.log',
+ *   data: { taskId: '123' }
+ * });
+ */
+export async function detached(
+  promptOrFile: string, 
+  options: ClaudeOptions = {}
+): Promise<CCResult> {
+  return claude(promptOrFile, { ...options, detached: true });
 }

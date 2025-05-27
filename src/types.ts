@@ -73,6 +73,9 @@ export interface RunOptions extends Partial<PromptConfig> {
 export interface StreamOptions extends RunOptions {
   // Buffer size for streaming
   bufferSize?: number;
+  
+  // Whether to parse JSON messages (default: false for raw output)
+  parse?: boolean;
 }
 
 /**

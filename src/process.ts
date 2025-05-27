@@ -192,7 +192,7 @@ export class CCProcess {
   /**
    * Stream prompt execution
    */
-  async *stream(prompt: string, options: CCOptions & PromptConfig): AsyncIterable<StreamChunk> {
+  async *stream(prompt: string, options: CCOptions & PromptConfig & { parse?: boolean }): AsyncIterable<StreamChunk> {
     // Check if Claude CLI is available
     if (!(await this.checkClaudeAvailable())) {
       yield {
@@ -204,6 +204,10 @@ export class CCProcess {
       return;
     }
 
+    // Default parse to false for raw output
+    const shouldParse = options.parse ?? false;
+    
+    // Always use stream-json for actual streaming
     const cmd = await this.buildCommand({
       ...options,
       outputFormat: 'stream-json',
@@ -220,19 +224,26 @@ export class CCProcess {
       proc.stdin.end();
     }
 
+    // Create a queue for chunks
+    const chunks: StreamChunk[] = [];
+    let done = false;
+    let error: Error | null = null;
+
     // Set up timeout
     let timeoutId: Timer | undefined;
+    let timedOut = false;
     if (options.timeout) {
       timeoutId = setTimeout(() => {
-        proc.kill();
+        timedOut = true;
+        proc.kill('SIGTERM');
+        // Force kill after 5 seconds if still running
+        setTimeout(() => {
+          if (!done) proc.kill('SIGKILL');
+        }, 5000);
       }, options.timeout);
     }
 
     try {
-      // Create a queue for chunks
-      const chunks: StreamChunk[] = [];
-      let done = false;
-      let error: Error | null = null;
 
       // Process stdout
       if (proc.stdout) {
@@ -240,21 +251,49 @@ export class CCProcess {
         proc.stdout.setEncoding('utf8');
 
         proc.stdout.on('data', (chunk: string) => {
-          buffer += chunk;
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+          if (!shouldParse) {
+            // Raw mode - yield raw JSON chunks directly
+            chunks.push({
+              type: 'content',
+              content: chunk,
+              timestamp: Date.now(),
+            });
+          } else {
+            // Parse mode - parse JSON and extract content
+            buffer += chunk;
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
 
-          for (const line of lines) {
-            if (line.trim()) {
-              chunks.push(this.parseStreamLine(line));
+            for (const line of lines) {
+              if (line.trim()) {
+                const parsed = this.parseStreamLine(line);
+                // Skip empty content chunks in parse mode
+                if (parsed.content || parsed.type === 'error') {
+                  chunks.push(parsed);
+                }
+              }
             }
           }
         });
 
         proc.stdout.on('end', () => {
-          if (buffer.trim()) {
-            chunks.push(this.parseStreamLine(buffer));
+          if (shouldParse && buffer.trim()) {
+            // Parse mode - handle remaining buffer
+            const parsed = this.parseStreamLine(buffer);
+            if (parsed.content || parsed.type === 'error') {
+              chunks.push(parsed);
+            }
           }
+          // Raw mode doesn't need end handling since we stream everything
+        });
+      }
+
+      // Capture stderr for better error messages
+      let stderrBuffer = '';
+      if (proc.stderr) {
+        proc.stderr.setEncoding('utf8');
+        proc.stderr.on('data', (chunk: string) => {
+          stderrBuffer += chunk;
         });
       }
 
@@ -264,11 +303,23 @@ export class CCProcess {
         done = true;
       });
 
-      proc.on('exit', (code) => {
+      proc.on('exit', (code, signal) => {
         if (code !== 0 && !error) {
+          let errorMessage: string;
+          if (timedOut) {
+            errorMessage = `Request timed out after ${options.timeout}ms`;
+          } else {
+            errorMessage = `Process exited with code ${code}`;
+            if (signal) {
+              errorMessage += ` (signal: ${signal})`;
+            }
+          }
+          if (stderrBuffer.trim()) {
+            errorMessage += `\n${stderrBuffer.trim()}`;
+          }
           chunks.push({
             type: 'error',
-            content: `Process exited with code ${code}`,
+            content: errorMessage,
             timestamp: Date.now(),
           });
         }
