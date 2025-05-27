@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.0.0] - TBD
+## [2.0.0] - 2025-01-26
 
 ### Added
 - **Function-based SDK**: Simple functions that mirror Claude CLI mental model
