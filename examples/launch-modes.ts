@@ -51,12 +51,15 @@ async function streamExample() {
 
 async function interactiveExample() {
   console.log('\n=== Interactive Mode Example ===');
-  console.log('Launching Claude interactively...\n');
+  console.log('Launching Claude interactively...');
+  console.log('⚠️  This will REPLACE the current process!\n');
   
-  // This will take over your terminal, just like running `claude` directly
-  const result = await interactive('Help me debug a complex issue');
+  // This will replace the Node.js process with Claude
+  // No code after this line will execute!
+  await interactive('Help me debug a complex issue');
   
-  console.log(`\nClaude exited with code: ${result.exitCode}`);
+  // This line will NEVER be reached
+  console.error('ERROR: This should never print!');
 }
 
 async function templateExample() {

@@ -193,6 +193,64 @@ bun run examples/root-cause-analysis.ts --search "TODO|FIXME"
      console.log(chunk.content);
    }
    
-   // Interactive (launches in terminal)
+   // Interactive (replaces current process!)
    await interactive('your-prompt.md', { data });
+   // ⚠️ Code after interactive() never executes!
    ```
+
+## All Example Files
+
+### Core Examples
+
+1. **`basic-usage.ts`** - Simple examples showing core functionality
+   ```bash
+   bun run examples/basic-usage.ts
+   ```
+
+2. **`file-based-usage.ts`** - File-based prompts with frontmatter and validation
+   ```bash
+   bun run examples/file-based-usage.ts
+   ```
+
+3. **`launch-modes.ts`** - Different execution modes (run, stream, interactive)
+   ```bash
+   bun run examples/launch-modes.ts [mode]
+   # Modes: run, stream, interactive, template, file, all
+   ```
+
+### New in v2.0.0
+
+4. **`interactive-demo.ts`** ⭐ - Shows process replacement behavior
+   ```bash
+   bun run examples/interactive-demo.ts
+   # Or with context:
+   bun run examples/interactive-demo.ts "debugging TypeScript"
+   ```
+
+5. **`dry-run-demo.ts`** ⭐ - Generate CLI commands without execution
+   ```bash
+   bun run examples/dry-run-demo.ts
+   ```
+
+### Advanced Examples
+
+6. **`demo-features.ts`** - Feature showcase (no execution)
+   ```bash
+   bun run examples/demo-features.ts
+   ```
+
+7. **`release.ts`** - Real-world release automation
+   ```bash
+   bun run examples/release.ts [version]
+   ```
+
+### Quick Start
+
+Run multiple examples at once:
+```bash
+# Run basic examples
+bun run example:quick
+
+# Run all non-interactive examples
+bun run examples/launch-modes.ts all
+```

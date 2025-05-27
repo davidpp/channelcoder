@@ -106,18 +106,23 @@ await claude('prompts/review.md', {
 Different modes for different needs:
 
 ```typescript
-import { claude, interactive, stream } from 'channelcoder';
+import { claude, interactive, stream, run } from 'channelcoder';
 
-// Get results programmatically
+// Run mode (default) - Get complete results programmatically
 const result = await claude('Generate tests');
+console.log(result.data);
 
-// Interactive session (like running claude directly)
-await interactive('Debug this error');
-
-// Stream responses
+// Stream mode - Real-time responses
 for await (const chunk of stream('Write documentation')) {
   process.stdout.write(chunk.content);
 }
+
+// Interactive mode - Replace process (like running claude directly)
+await interactive('Debug this error');
+// ⚠️ Code after interactive() never executes!
+
+// Explicit run mode
+const result2 = await run('Analyze code', { tools: ['Read'] });
 ```
 
 ## CLI Reference
@@ -202,10 +207,10 @@ Your prompt content here...
 ```
 
 **Note:** The following options are passed via CLI or SDK, not frontmatter:
-- `outputFormat` - Use `--json` flag or `cc.run(prompt, { outputFormat: 'json' })`
-- `stream` - Use `--stream` flag or `cc.stream()`
-- `verbose` - Use `--verbose` flag or `cc.run(prompt, { verbose: true })`
-- `timeout` - SDK only: `cc.run(prompt, { timeout: 30000 })`
+- `outputFormat` - Use `--json` flag or `claude(prompt, { outputFormat: 'json' })`
+- `stream` - Use `--stream` flag or `stream()` function
+- `verbose` - Use `--verbose` flag or `claude(prompt, { verbose: true })`
+- `timeout` - SDK only: `claude(prompt, { timeout: 30000 })`
 
 #### Frontmatter Validation
 
@@ -270,12 +275,11 @@ input:
 ```typescript
 import { z } from 'zod';
 
+// Define schema in frontmatter or pass to validation utils
 const schema = z.object({
   name: z.string(),
   age: z.number().optional()
 });
-
-cc.prompt`...`.withSchema(schema);
 ```
 
 ### Examples
@@ -344,8 +348,9 @@ channelcoder cleanup.md --disallowed-tools "Bash(rm:*),Bash(git:push)"
 channelcoder -p "Process items: {items}" \
    -d 'items=["apple","banana","orange"]'
 
-# Via stdin
-echo '{"config": {"port": 3000}}' | cc prompt.md --data-stdin
+# Complex nested data
+channelcoder -p "Config: {config}" \
+   -d 'config={"port":3000,"host":"localhost"}'
 ```
 
 ## SDK Reference
@@ -438,13 +443,18 @@ if (result.metadata?.isMaxTurns) {
 ```typescript
 import { interactive } from 'channelcoder';
 
-// Launch Claude interactively (takes over terminal)
-const result = await interactive('Help me debug this issue');
+// Launch Claude interactively (replaces current process)
+await interactive('Help me debug this issue');
 
-if (result.exitCode !== 0) {
-  console.error('Claude exited with error');
-}
+// Code below this line will NEVER execute!
+// The process is replaced by Claude using shell exec
 ```
+
+**Important:** Interactive mode completely replaces your Node.js process with Claude:
+- No Node.js parent process remains in memory
+- Claude gets direct terminal control
+- Exit codes go directly to the shell
+- Perfect for long Claude sessions without memory overhead
 
 ### Session Management
 
