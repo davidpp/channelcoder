@@ -440,6 +440,60 @@ await interactive('Help me debug this issue');
 
 ### Session Management
 
+ChannelCoder now provides built-in session management for maintaining conversation context:
+
+```typescript
+import { session } from 'channelcoder';
+
+// Create a new session
+const s = session();
+
+// Use like normal, but with automatic context tracking
+await s.claude('What is TypeScript?');
+await s.claude('Show me an example'); // Automatically continues conversation
+
+// Save session for later
+await s.save('learning-typescript');
+
+// Load and continue a saved session
+const saved = await session.load('learning-typescript');
+await saved.claude('What about generics?');
+
+// List all saved sessions
+const sessions = await session.list();
+// [{ name: 'learning-typescript', messageCount: 3, lastActive: Date, ... }]
+
+// Access session data
+console.log(s.id());         // Current session ID
+console.log(s.messages());   // Conversation history
+```
+
+**CLI Session Support:**
+
+```bash
+# Start a new session
+channelcoder prompts/debug.md --session my-debug
+
+# Continue a session
+channelcoder prompts/continue.md --load-session my-debug
+
+# List all sessions
+channelcoder --list-sessions
+```
+
+**Session-Required Prompts:**
+
+```yaml
+---
+session:
+  required: true
+systemPrompt: "You are debugging an ongoing issue"
+---
+Continue investigating the error we discussed.
+```
+
+**Manual Session Management (without session wrapper):**
+
 ```typescript
 // Resume a specific session by ID
 await claude('Continue our discussion', {

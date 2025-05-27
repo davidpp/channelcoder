@@ -154,6 +154,17 @@ export class CCProcess {
         if (options.outputFormat === 'json') {
           try {
             const jsonData = JSON.parse(stdout);
+
+            // Extract session ID if present
+            if (jsonData.session_id) {
+              result.sessionId = jsonData.session_id;
+            }
+            
+            // Also check for session ID in type: "system" messages
+            if (jsonData.type === 'system' && jsonData.session_id) {
+              result.sessionId = jsonData.session_id;
+            }
+
             if (jsonData.type === 'result' && jsonData.result) {
               result.data = this.parseOutput(jsonData.result);
               if (!result.data) {
@@ -177,6 +188,48 @@ export class CCProcess {
           } else {
             result.warnings = ['No JSON output found in response'];
           }
+          
+          // For stream-json format, check stdout for session_id
+          try {
+            const lines = stdout.split('\n');
+            for (const line of lines) {
+              if (line.trim() && line.includes('session_id')) {
+                const data = JSON.parse(line);
+                if (data.session_id) {
+                  result.sessionId = data.session_id;
+                  break;
+                }
+              }
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        }
+      }
+
+      // Also check stderr for session ID
+      if (result.success && stderr) {
+        // Check for session ID in various formats
+        const sessionMatch = stderr.match(/Session ID: ([a-zA-Z0-9-]+)/);
+        if (sessionMatch) {
+          result.sessionId = sessionMatch[1];
+        }
+        
+        // Also check for session_id in JSON output (stream-json format)
+        try {
+          // stderr might contain multiple JSON lines in stream-json format
+          const lines = stderr.split('\n');
+          for (const line of lines) {
+            if (line.trim() && line.includes('session_id')) {
+              const data = JSON.parse(line);
+              if (data.session_id) {
+                result.sessionId = data.session_id;
+                break;
+              }
+            }
+          }
+        } catch {
+          // Ignore JSON parse errors
         }
       }
 
@@ -192,7 +245,10 @@ export class CCProcess {
   /**
    * Stream prompt execution
    */
-  async *stream(prompt: string, options: CCOptions & PromptConfig & { parse?: boolean }): AsyncIterable<StreamChunk> {
+  async *stream(
+    prompt: string,
+    options: CCOptions & PromptConfig & { parse?: boolean }
+  ): AsyncIterable<StreamChunk> {
     // Check if Claude CLI is available
     if (!(await this.checkClaudeAvailable())) {
       yield {
@@ -206,7 +262,7 @@ export class CCProcess {
 
     // Default parse to false for raw output
     const shouldParse = options.parse ?? false;
-    
+
     // Always use stream-json for actual streaming
     const cmd = await this.buildCommand({
       ...options,
@@ -244,7 +300,6 @@ export class CCProcess {
     }
 
     try {
-
       // Process stdout
       if (proc.stdout) {
         let buffer = '';

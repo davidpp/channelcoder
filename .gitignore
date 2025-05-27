@@ -158,3 +158,6 @@ generated/
 
 # Claude settings
 .claude/settings.local.json
+
+# ChannelCoder sessions
+.channelcoder/

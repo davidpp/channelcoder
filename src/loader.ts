@@ -16,6 +16,11 @@ export const FrontmatterSchema = z
     permissionPromptTool: z.string().optional(),
     input: z.any().optional(), // Processed separately as it can be various formats
     output: z.any().optional(), // Processed separately as it can be various formats
+    session: z
+      .object({
+        required: z.boolean().optional(),
+      })
+      .optional(),
   })
   .strict(); // Disallow unknown keys
 

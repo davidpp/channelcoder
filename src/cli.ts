@@ -32,6 +32,7 @@ ChannelCoder - Channel your prompts to Claude Code
 Usage:
   channelcoder <prompt-file> [options]   Execute prompt from file
   channelcoder -p "inline prompt" [options]   Execute inline prompt
+  channelcoder --list-sessions   List all saved sessions
   
 Options:
   -p, --prompt <text>      Use inline prompt instead of file
@@ -45,6 +46,9 @@ Options:
   -r, --resume <id>        Resume conversation by session ID
   -c, --continue           Continue most recent conversation
   --max-turns <n>          Limit agentic turns
+  --session <name>         Use session mode with given name
+  --load-session <name>    Load and continue existing session
+  --list-sessions          List all saved sessions
   -v, --verbose            Verbose output
   -h, --help               Show this help
 
@@ -60,6 +64,11 @@ Examples:
   
   # Complex data via stdin
   echo '{"items": ["a", "b", "c"]}' | channelcoder prompts/process.md --data-stdin
+  
+  # Session management
+  channelcoder prompts/debug.md --session my-debug
+  channelcoder prompts/continue.md --load-session my-debug
+  channelcoder --list-sessions
 `);
 }
 
@@ -117,17 +126,37 @@ async function main() {
       'max-turns': { type: 'string' },
       verbose: { type: 'boolean', short: 'v' },
       help: { type: 'boolean', short: 'h' },
+      session: { type: 'string' },
+      'load-session': { type: 'string' },
+      'list-sessions': { type: 'boolean' },
     },
     allowPositionals: true,
   });
 
   // Show help
-  if (values.help || (!values.prompt && positionals.length === 0)) {
+  if (values.help || (!values.prompt && positionals.length === 0 && !values['list-sessions'])) {
     showHelp();
     process.exit(0);
   }
 
   try {
+    // Handle list-sessions command
+    if (values['list-sessions']) {
+      const { session } = await import('./session.js');
+      const sessions = await session.list();
+
+      if (sessions.length === 0) {
+        console.log('No saved sessions found.');
+      } else {
+        console.log('Saved sessions:');
+        for (const sess of sessions) {
+          console.log(
+            `  ${sess.name} - ${sess.messageCount} messages (last active: ${sess.lastActive.toLocaleDateString()})`
+          );
+        }
+      }
+      process.exit(0);
+    }
     // Parse data
     let data: InterpolationData = {};
 
@@ -214,6 +243,34 @@ async function main() {
       options.verbose = true;
     }
 
+    // Handle session mode
+    if (values.session || values['load-session']) {
+      const { session } = await import('./session.js');
+
+      // Load or create session
+      let s: Awaited<ReturnType<typeof session>>;
+      if (values['load-session']) {
+        s = await session.load(values['load-session']);
+      } else {
+        s = session({ name: values.session });
+      }
+
+      // Execute with session
+      if (values.prompt) {
+        await s.interactive(values.prompt, options);
+      } else {
+        const promptFile = resolve(positionals[0]);
+        await s.interactive(promptFile, options);
+      }
+
+      // Save session if name provided
+      if (values.session && typeof values.session === 'string') {
+        await s.save(values.session);
+      }
+
+      process.exit(0);
+    }
+
     // Launch Claude interactively
     // Note: interactive() replaces the current process, so code after this won't execute
     if (values.prompt) {
@@ -245,7 +302,9 @@ async function main() {
         console.error('💡 Check that all required fields are provided with -d');
       } else if (error.message.includes('Failed to launch Claude')) {
         console.error('❌ Error: Failed to launch Claude CLI');
-        console.error('💡 Make sure Claude CLI is installed: npm install -g @anthropic-ai/claude-code');
+        console.error(
+          '💡 Make sure Claude CLI is installed: npm install -g @anthropic-ai/claude-code'
+        );
       } else {
         // Other errors - show message without stack trace
         console.error('❌ Error:', error.message);

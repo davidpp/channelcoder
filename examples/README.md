@@ -8,6 +8,8 @@ All examples require Claude CLI to be installed and configured:
 - Install: https://docs.anthropic.com/en/docs/claude-code/cli-usage
 - The examples will check for Claude CLI and warn if it's not available
 
+**Note**: Session examples make real API calls to Claude. Use `--dry-run` flag where available to see commands without execution.
+
 ## Release Analysis Example
 
 A real-world example showing how to automate release version analysis using git history.
@@ -153,6 +155,58 @@ bun run examples/root-cause-analysis.ts --search "TODO|FIXME"
    }
    ```
 
+## Session Management
+
+ChannelCoder v2.1+ includes built-in session management for maintaining conversation context across multiple interactions.
+
+### Key Features
+
+1. **Automatic Context Tracking**: Each message is linked with the previous conversation
+2. **Session Persistence**: Save and load sessions for multi-day workflows  
+3. **Session Chaining**: Claude returns new session IDs with each response
+4. **Full Integration**: Works with all ChannelCoder features (templates, validation, tools)
+
+### Basic Session Usage
+
+```typescript
+import { session } from 'channelcoder';
+
+// Create a new session
+const s = session();
+
+// Have a conversation
+await s.claude('What is TypeScript?');
+await s.claude('Show me an example'); // Remembers previous context!
+
+// Save for later
+await s.save('learning-session');
+
+// Load and continue
+const saved = await session.load('learning-session');
+await saved.claude('What about generics?'); // Continues where you left off
+```
+
+### Session Use Cases
+
+1. **Iterative Development**: Build features step-by-step over multiple days
+2. **Code Reviews**: Review multiple files while maintaining context
+3. **Debugging Sessions**: Track down issues with full conversation history
+4. **Learning Workflows**: Progressive learning with context preservation
+5. **Team Collaboration**: Share sessions with team members
+
+### CLI Session Support
+
+```bash
+# Start a new session
+channelcoder prompts/task.md --session project-x
+
+# Continue later
+channelcoder prompts/continue.md --load-session project-x
+
+# List all sessions
+channelcoder --list-sessions
+```
+
 ## Creating Your Own Examples
 
 1. **Define a Prompt File** with frontmatter:
@@ -232,17 +286,49 @@ bun run examples/root-cause-analysis.ts --search "TODO|FIXME"
    bun run examples/dry-run-demo.ts
    ```
 
+### Session Management Examples ⭐ NEW
+
+6. **`session-usage.ts`** - Comprehensive session management guide
+   ```bash
+   bun run examples/session-usage.ts
+   ```
+   Shows: Basic sessions, saving/loading, listing, CLI integration
+
+7. **`debug-session.ts`** - Multi-step debugging workflow
+   ```bash
+   bun run examples/debug-session.ts
+   ```
+   Shows: Error tracking across messages, session persistence
+
+8. **`session-demo-live.ts`** - Live demo with real Claude CLI
+   ```bash
+   bun run examples/session-demo-live.ts [--dry-run]
+   ```
+   Shows: Real session ID tracking, conversation continuity
+
+9. **`iterative-development.ts`** ⭐ - Build features iteratively
+   ```bash
+   bun run examples/iterative-development.ts
+   ```
+   Shows: Multi-day development workflow, context preservation
+
+10. **`code-review-session.ts`** ⭐ - Conduct thorough code reviews
+    ```bash
+    bun run examples/code-review-session.ts
+    ```
+    Shows: Review multiple files, track issues, follow-up on fixes
+
 ### Advanced Examples
 
-6. **`demo-features.ts`** - Feature showcase (no execution)
-   ```bash
-   bun run examples/demo-features.ts
-   ```
+11. **`demo-features.ts`** - Feature showcase (no execution)
+    ```bash
+    bun run examples/demo-features.ts
+    ```
 
-7. **`release.ts`** - Real-world release automation
-   ```bash
-   bun run examples/release.ts [version]
-   ```
+12. **`release.ts`** - Real-world release automation
+    ```bash
+    bun run examples/release.ts [version]
+    ```
 
 ### Quick Start
 

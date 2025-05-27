@@ -7,6 +7,12 @@
 // Export main functions
 export { claude, interactive, stream, run, detached, type ClaudeOptions } from './functions.js';
 
+// Export session management
+export { session } from './session.js';
+export type { Session, SessionOptions, SessionInfo, Message, SessionState } from './session.js';
+export type { SessionStorage } from './session.js';
+export { FileSessionStorage } from './session-storage.js';
+
 // Export types
 export type {
   CCResult,

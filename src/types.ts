@@ -10,6 +10,7 @@ export interface CCResult<T = unknown> {
   stdout?: string;
   stderr?: string;
   warnings?: string[];
+  sessionId?: string; // Session ID from Claude CLI response
 }
 
 /**
@@ -35,6 +36,11 @@ export interface PromptConfig {
   // MCP configuration
   mcpConfig?: string;
   permissionPromptTool?: string;
+
+  // Session configuration
+  session?: {
+    required?: boolean;
+  };
 }
 
 /**
@@ -73,7 +79,7 @@ export interface RunOptions extends Partial<PromptConfig> {
 export interface StreamOptions extends RunOptions {
   // Buffer size for streaming
   bufferSize?: number;
-  
+
   // Whether to parse JSON messages (default: false for raw output)
   parse?: boolean;
 }

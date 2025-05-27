@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Session Management**: Built-in conversation continuity
+  - `session()` function creates session-aware versions of all functions
+  - Automatic session ID tracking and chaining
+  - Save/load sessions for long-running conversations
+  - File-based storage in `~/.channelcoder/sessions/`
+  - Session-required prompts via frontmatter
+  - CLI flags: `--session`, `--load-session`, `--list-sessions`
+- **Session API**:
+  - `session.load(name)` - Load existing session
+  - `session.list()` - List all saved sessions
+  - Session methods: `id()`, `messages()`, `save()`, `clear()`
+- **Template Integration**: Session data available in templates
+  - Access via `{session.lastMessage}` and other session properties
+
 ## [2.0.0] - 2025-01-26
 
 ### Added
