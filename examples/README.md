@@ -163,19 +163,36 @@ bun run examples/root-cause-analysis.ts --search "TODO|FIXME"
      param2?: boolean
    output:
      result: string
+   systemPrompt: "You are a helpful assistant"
+   allowedTools: [Read, Write]
    ---
-   Process ${param1}...
+   Process {param1}...
    ```
 
 2. **Use in Your Script**:
    ```typescript
-   const result = await cc.fromFile('your-prompt.md', {
-     param1: 'value',
-     param2: true
+   import { claude } from 'channelcoder';
+   
+   const result = await claude('your-prompt.md', {
+     data: {
+       param1: 'value',
+       param2: true
+     }
    });
+   
+   // Input validation happens automatically if schema in frontmatter
+   if (result.success) {
+     console.log(result.data); // Typed based on output schema
+   }
    ```
 
-3. **Validate Results**:
+3. **Different Execution Modes**:
    ```typescript
-   const validated = cc.validate(result, YourSchema);
+   // Streaming
+   for await (const chunk of stream('your-prompt.md', { data })) {
+     console.log(chunk.content);
+   }
+   
+   // Interactive (launches in terminal)
+   await interactive('your-prompt.md', { data });
    ```

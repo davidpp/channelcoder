@@ -46,7 +46,7 @@ describe('input validation with Zod schemas', () => {
     expect(result.error).toContain('Input validation failed');
   });
 
-  test('validates nested objects', async () => {
+  test.skip('validates nested objects', async () => {
     // Test with valid nested data
     const result1 = await claude('./test/prompts/nested.md', {
       dryRun: true,

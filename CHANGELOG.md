@@ -2,23 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.0] - TBD
+## [2.0.0] - TBD
 
 ### Added
-- **Interactive CLI**: Run Claude directly in your terminal with template processing and file loading
-- **SDK launch() Method**: New method for launching Claude in different modes:
-  - `interactive` - Take over terminal for natural conversation
-  - `detached` - Fire-and-forget background processes  
-  - `background` - Background with optional logging
+- **Function-based SDK**: Simple functions that mirror Claude CLI mental model
+  - `claude(prompt, options)` - Main function with automatic file detection
+  - `stream(prompt, options)` - Streaming responses
+  - `interactive(prompt, options)` - Interactive terminal mode
+  - `run(prompt, options)` - Explicit run mode
+- **Interactive CLI**: Run Claude directly in your terminal with template processing
 - **Template Variables**: Support for `{var}` and `${var}` syntax with defaults
 - **File-based Prompts**: Load prompts from Markdown files with YAML frontmatter
 - **Schema Validation**: Built-in Zod validation for inputs and outputs
-- **Streaming Support**: Real-time streaming in SDK for long responses
+- **Streaming Support**: Real-time streaming for long responses
+- **Dry-run Mode**: Test commands without executing (`dryRun: true` option)
+- **Template Literal Support**: Use `` await claude`Hello ${name}` ``
 
-### Design Philosophy
-- CLI is for interactive human use (like running `claude` directly)
-- SDK is for programmatic use with output capture
-- Clear separation of concerns for better developer experience
+### Features
+- **Automatic File Detection**: Detects files by `.md` extension or path patterns
+- **Options-based Configuration**: All settings through a single options object
+- **Session Management**: Resume and continue conversations
+- **Tool Restrictions**: Fine-grained control over allowed tools
+- **Multiple Execution Modes**: Run, stream, or interactive based on needs
 
 ## [1.1.1] - 2025-01-24
 
@@ -41,16 +46,5 @@ All notable changes to this project will be documented in this file.
 - **Node.js Compatibility**: ChannelCoder now runs on both Node.js and Bun runtimes, expanding usage to more environments
 - **Dual Runtime Support**: Users can now choose between Node.js or Bun based on their project requirements
 
-## [1.0.0] - 2024-12-28
-
-### Added
-- **ChannelCoder SDK**: Complete TypeScript SDK for Claude Code integration with fluent API and streaming support
-- **CLI Wrapper**: Enhanced command-line interface with improved prompt engineering capabilities  
-- **Variable Interpolation**: Multi-place variable substitution in prompts with conditional expressions
-- **Schema Validation**: Zod-based input/output validation for type-safe prompt responses
-- **File-based Prompts**: Support for Markdown prompt templates with YAML frontmatter
-- **Prompt Builder**: Chainable API for building complex prompts with data, tools, and configuration
-- **Tool Restrictions**: Fine-grained control over Claude CLI tool access patterns
-- **Examples**: Comprehensive example library demonstrating SDK and CLI usage patterns
 - **Test Suite**: Complete test coverage using Bun's test runner with mocking support
 - **Release Automation**: Automated release workflow with changelog generation and version management

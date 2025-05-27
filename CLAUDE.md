@@ -51,31 +51,36 @@ bun test path/to/test.ts
 
 ## Architecture
 
-### Core Classes and Their Responsibilities
+### Core Modules and Their Responsibilities
 
-1. **CC (cc.ts)** - Main SDK entry point
-   - Handles file loading, template processing, and execution
-   - Supports both streaming and non-streaming responses
-   - Manages schema validation with Zod
+1. **functions.ts** - Main SDK entry point
+   - Exports `claude()`, `stream()`, `interactive()`, and `run()` functions
+   - Handles file vs inline prompt detection
+   - Manages dry-run mode for testing
+   - Orchestrates template processing and CLI execution
 
-2. **CCProcess (process.ts)** - Claude CLI integration
+2. **process.ts** - Claude CLI integration
    - Spawns and manages Claude CLI subprocess
    - Handles streaming output and error parsing
    - Manages tool restrictions and command arguments
+   - Builds command line arguments from options
 
-3. **PromptBuilder (prompt-builder.ts)** - Fluent API
-   - Chainable methods for building complex prompts
-   - Supports data, tools, and configuration
-
-4. **PromptTemplate (template.ts)** - Variable interpolation
+3. **template.ts** - Variable interpolation
    - Multi-place variable substitution
    - Conditional expressions with JavaScript
    - Template validation
+   - Supports both ${var} and {var} syntax
 
-5. **Loader (loader.ts)** - File handling
+4. **loader.ts** - File handling
    - Loads and parses Markdown files with YAML frontmatter
    - Validates frontmatter against Zod schemas
    - Resolves file paths for system prompts
+   - Converts YAML schema notation to Zod schemas
+
+5. **validation.ts** - Schema validation utilities
+   - Validates input data against Zod schemas
+   - Validates output responses when schemas provided
+   - Provides detailed error messages
 
 ### Key Patterns
 

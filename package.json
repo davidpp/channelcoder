@@ -23,8 +23,6 @@
     "build:tsc": "tsc",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "test:compat": "bun test test/node-compat.test.ts",
-    "test:both": "bun scripts/test-both.ts",
     "test:coverage": "bun test --coverage",
     "dev": "tsc --watch",
     "cli": "bun run src/cli.ts",
