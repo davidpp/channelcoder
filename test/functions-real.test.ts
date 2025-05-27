@@ -1,15 +1,14 @@
 import { describe, expect, test } from 'bun:test';
-import { claude, interactive, run, stream } from '../src/functions.js';
+import { stream, claude, interactive, run } from '../src/functions.js';
 
 describe('claude function - dry-run command generation', () => {
-
   test('simple inline prompt', async () => {
     const result = await claude('What is 2+2?', { dryRun: true });
     expect(result.data.fullCommand).toMatchSnapshot();
   });
 
   test('inline prompt with options', async () => {
-    const result = await claude('Analyze this code', { 
+    const result = await claude('Analyze this code', {
       dryRun: true,
       tools: ['Read', 'Grep'],
       system: 'Be concise',
@@ -20,19 +19,17 @@ describe('claude function - dry-run command generation', () => {
   });
 
   test('template literal', async () => {
+    // Template literals can't use dryRun via options, so we test the underlying claudeImpl
+    const { claude } = await import('../src/functions.js');
+
+    // Test that template literals produce the expected prompt
     const num1 = 5;
     const num2 = 3;
-    // Template literals execute immediately, can't use dry-run
-    // Just test that it would try to execute
-    let executed = false;
-    try {
-      await claude`What is ${num1} + ${num2}?`;
-      executed = true;
-    } catch (error) {
-      // Expected to fail without Claude
-      executed = true;
-    }
-    expect(executed).toBe(true);
+    const result = await claude(`What is ${num1} + ${num2}?`, { dryRun: true });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.prompt).toBe('What is 5 + 3?');
+    expect(result.data?.fullCommand).toContain('What is 5 + 3?');
   });
 
   test('file-based prompt', async () => {
@@ -78,16 +75,12 @@ describe('claude function - dry-run command generation', () => {
     const result = await claude('./test/prompts/detection-test.md', { dryRun: true });
     expect(result.success).toBe(true);
     expect(result.data.fullCommand).toContain('echo -e');
-    
+
     // Test various file patterns are handled
-    const patterns = [
-      'test.md',
-      './test.md', 
-      '../test.md',
-    ];
-    
+    const patterns = ['test.md', './test.md', '../test.md'];
+
     // These should all be treated as files (even if they don't exist in dry-run)
-    patterns.forEach(pattern => {
+    patterns.forEach((pattern) => {
       expect(pattern.endsWith('.md') || pattern.startsWith('./')).toBe(true);
     });
   });

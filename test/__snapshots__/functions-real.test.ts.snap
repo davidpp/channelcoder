@@ -1,15 +1,15 @@
 // Bun Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`claude function - dry-run command generation simple inline prompt 1`] = `"echo -e "What is 2+2?" | claude -p --output-format json"`;
+exports[`claude function - dry-run command generation simple inline prompt 1`] = `"echo -e "What is 2+2?" | claude --print --output-format json"`;
 
-exports[`claude function - dry-run command generation inline prompt with options 1`] = `"echo -e "Analyze this code" | claude -p --system-prompt "Be concise" --allowedTools Read,Grep --max-turns 5 --output-format json --verbose"`;
+exports[`claude function - dry-run command generation inline prompt with options 1`] = `"echo -e "Analyze this code" | claude --print --system-prompt "Be concise" --allowedTools Read,Grep --max-turns 5 --output-format json --verbose"`;
 
-exports[`claude function - dry-run command generation file-based prompt 1`] = `"echo -e "\\n# Test Prompt\\n\\nTask ID: TEST-123\\nPriority: {priority || 'normal'}\\n\\n{#if includeDetails}\\nThis includes details.\\n{#endif}" | claude -p --system-prompt "Test system prompt" --allowedTools Read,Write --output-format json"`;
+exports[`claude function - dry-run command generation file-based prompt 1`] = `"echo -e "\\n# Test Prompt\\n\\nTask ID: TEST-123\\nPriority: {priority || 'normal'}\\n\\n{#if includeDetails}\\nThis includes details.\\n{#endif}" | claude --print --system-prompt "Test system prompt" --allowedTools Read,Write --output-format json"`;
 
-exports[`claude function - dry-run command generation file-based prompt with merged options 1`] = `"echo -e "\\n# Test Prompt\\n\\nTask ID: TEST-456\\nPriority: {priority || 'normal'}\\n\\n{#if includeDetails}\\nThis includes details.\\n{#endif}" | claude -p --system-prompt "Test system prompt" --allowedTools Bash --output-format json --verbose"`;
+exports[`claude function - dry-run command generation file-based prompt with merged options 1`] = `"echo -e "\\n# Test Prompt\\n\\nTask ID: TEST-456\\nPriority: {priority || 'normal'}\\n\\n{#if includeDetails}\\nThis includes details.\\n{#endif}" | claude --print --system-prompt "Test system prompt" --allowedTools Bash --output-format json --verbose"`;
 
-exports[`claude function - dry-run command generation resume session 1`] = `"claude --resume test-session-123 --output-format json"`;
+exports[`claude function - dry-run command generation resume session 1`] = `"claude --resume test-session-123 --print --output-format json"`;
 
-exports[`claude function - dry-run command generation continue mode 1`] = `"claude --continue --output-format json"`;
+exports[`claude function - dry-run command generation continue mode 1`] = `"claude --continue --print --output-format json"`;
 
-exports[`claude function - dry-run command generation multi-line prompt escaping 1`] = `"echo -e "Analyze this:\\n- First line\\n- Second line with \\"quotes\\"\\n- Third line with \\$pecial chars" | claude -p --output-format json"`;
+exports[`claude function - dry-run command generation multi-line prompt escaping 1`] = `"echo -e "Analyze this:\\n- First line\\n- Second line with \\"quotes\\"\\n- Third line with \\$pecial chars" | claude --print --output-format json"`;
