@@ -56,7 +56,7 @@ interface Session {
   run: typeof run;
   
   // Essential session methods
-  id(): string;              // Get current session ID
+  id(): string | undefined;  // Get current session ID (undefined if not started)
   messages(): Message[];     // Get conversation history
   save(name?: string): Promise<string>;  // Save session
   clear(): void;            // Clear session
@@ -138,6 +138,11 @@ class SessionManager {
     return result;
   }
 }
+
+// Note: Session IDs are extracted from Claude CLI output in multiple ways:
+// 1. From JSON output when using --output-format json
+// 2. From stream-json format: {"session_id": "..."}
+// 3. From stderr patterns: "Session ID: xyz"
 ```
 
 ### Storage Layer
@@ -146,7 +151,12 @@ Simple file-based storage for v1:
 
 ```typescript
 class FileSessionStorage {
-  private basePath = '.channelcoder/sessions';
+  private basePath: string;
+  
+  constructor(basePath?: string) {
+    // Default to home directory for cross-platform compatibility
+    this.basePath = basePath || join(homedir(), '.channelcoder', 'sessions');
+  }
   
   async save(state: SessionState, name?: string): Promise<string> {
     const filename = name || `session-${Date.now()}.json`;
@@ -214,35 +224,35 @@ Context from last message: {session.lastMessage}
 ### CLI Integration
 
 ```bash
-# Start a new session
-channelcoder prompts/start.md --session
+# Start a new session with a name
+channelcoder prompts/start.md --session my-debug-session
 
-# Continue a session by name
-channelcoder prompts/continue.md --session my-debug-session
+# Load and continue an existing session
+channelcoder prompts/continue.md --load-session my-debug-session
 
-# List sessions
+# List all saved sessions
 channelcoder --list-sessions
 
-# Load specific session
-channelcoder --load-session .channelcoder/sessions/feature-x.json
+# Session flags work with both file and inline prompts
+channelcoder -p "Debug this error" --session debug-123
 ```
 
 ## Implementation Phases
 
-### Phase 1: Core Session Management (MVP)
+### Phase 1: Core Session Management (MVP) ✅
 - [x] Basic session tracking
 - [x] Automatic session ID chaining
 - [x] Message history
 - [x] Session wrapper functions
 
-### Phase 2: Persistence
-- [ ] File-based storage
-- [ ] Save/load functionality
-- [ ] Session listing
-- [ ] CLI integration
+### Phase 2: Persistence ✅
+- [x] File-based storage
+- [x] Save/load functionality
+- [x] Session listing
+- [x] CLI integration
 
 ### Phase 3: Enhanced Features
-- [ ] Session templates in frontmatter
+- [x] Session templates in frontmatter (basic support)
 - [ ] Session metadata and tags
 - [ ] Search within sessions
 - [ ] Session export formats

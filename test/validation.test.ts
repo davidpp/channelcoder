@@ -12,7 +12,7 @@ describe('input validation with Zod schemas', () => {
         tags: ['bug', 'urgent'],
       },
     });
-    
+
     expect(result.success).toBe(false);
     expect(result.error).toContain('Input validation failed');
     expect(result.error).toContain('taskId');
@@ -26,7 +26,7 @@ describe('input validation with Zod schemas', () => {
         name: 'Alice',
       },
     });
-    
+
     expect(result.success).toBe(true);
     expect(result.data.fullCommand).toMatchSnapshot();
   });
@@ -41,7 +41,7 @@ describe('input validation with Zod schemas', () => {
         items: ['a', 'b'],
       },
     });
-    
+
     expect(result.success).toBe(false);
     expect(result.error).toContain('Input validation failed');
   });
@@ -61,7 +61,7 @@ describe('input validation with Zod schemas', () => {
         },
       },
     });
-    
+
     // TODO: This test fails due to nested object validation not being supported
     // See test/BUGS.md for details
     expect(result1.success).toBe(true);
@@ -81,7 +81,7 @@ describe('input validation with Zod schemas', () => {
         },
       },
     });
-    
+
     expect(result2.success).toBe(false);
     expect(result2.error).toContain('Input validation failed');
     expect(result2.error).toContain('email');
@@ -97,7 +97,7 @@ describe('input validation with Zod schemas', () => {
         extra: 'fields are ok',
       },
     });
-    
+
     expect(result.success).toBe(true);
     expect(result.data.fullCommand).toMatchSnapshot();
   });
@@ -107,7 +107,7 @@ describe('input validation with Zod schemas', () => {
       dryRun: true,
       data: { task: 'debugging' },
     });
-    
+
     expect(result.success).toBe(true);
     expect(result.data.fullCommand).toMatchSnapshot();
     expect(result.data.fullCommand).toContain('--system-prompt');

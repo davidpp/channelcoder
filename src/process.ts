@@ -159,7 +159,7 @@ export class CCProcess {
             if (jsonData.session_id) {
               result.sessionId = jsonData.session_id;
             }
-            
+
             // Also check for session ID in type: "system" messages
             if (jsonData.type === 'system' && jsonData.session_id) {
               result.sessionId = jsonData.session_id;
@@ -188,7 +188,7 @@ export class CCProcess {
           } else {
             result.warnings = ['No JSON output found in response'];
           }
-          
+
           // For stream-json format, check stdout for session_id
           try {
             const lines = stdout.split('\n');
@@ -214,7 +214,7 @@ export class CCProcess {
         if (sessionMatch) {
           result.sessionId = sessionMatch[1];
         }
-        
+
         // Also check for session_id in JSON output (stream-json format)
         try {
           // stderr might contain multiple JSON lines in stream-json format

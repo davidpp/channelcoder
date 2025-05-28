@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 
-import { detached, claude } from './src/index.js';
 import { existsSync, readFileSync, unlinkSync } from 'fs';
 import { setTimeout } from 'timers/promises';
+import { claude, detached } from './src/index.js';
 
 console.log('🧪 Testing Detached Mode - ChannelCoder\n');
 
@@ -27,9 +27,9 @@ try {
   // Launch in detached mode
   const result = await detached(prompt, {
     logFile,
-    verbose: true
+    verbose: true,
   });
-  
+
   if (result.success && result.data?.pid) {
     console.log(`✅ Started detached process with PID: ${result.data.pid}`);
     console.log(`📄 Log file: ${logFile}`);
@@ -66,7 +66,7 @@ Then list 3 benefits of detached execution.`;
 
 const result2 = await claude(complexPrompt, {
   detached: true,
-  logFile,  // Append to same file
+  logFile, // Append to same file
 });
 
 console.log(`✅ Started second detached process with PID: ${result2.data?.pid}`);
@@ -83,8 +83,8 @@ console.log(finalContent);
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
 // Analyze results
-const lines = finalContent.split('\n').filter(line => line.trim());
-console.log(`\n📊 Results:`);
+const lines = finalContent.split('\n').filter((line) => line.trim());
+console.log('\n📊 Results:');
 console.log(`- Total lines in log: ${lines.length}`);
 console.log(`- Log file size: ${finalContent.length} bytes`);
 

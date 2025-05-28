@@ -1,7 +1,12 @@
-import type { CCResult } from './types.js';
 import type { ClaudeFunction, ClaudeOptions } from './functions.js';
-import { claude as claudeBase, stream as streamBase, interactive as interactiveBase, run as runBase } from './functions.js';
+import {
+  claude as claudeBase,
+  interactive as interactiveBase,
+  run as runBase,
+  stream as streamBase,
+} from './functions.js';
 import { FileSessionStorage } from './session-storage.js';
+import type { CCResult, StreamChunk } from './types.js';
 
 /**
  * Message in a conversation
@@ -18,12 +23,12 @@ export interface Message {
  */
 export interface SessionState {
   // Claude CLI session chain
-  sessionChain: string[];         // All session IDs in order
-  currentSessionId?: string;      // Latest session ID
-  
+  sessionChain: string[]; // All session IDs in order
+  currentSessionId?: string; // Latest session ID
+
   // Conversation history
   messages: Message[];
-  
+
   // Metadata
   metadata: {
     name?: string;
@@ -69,12 +74,12 @@ export interface Session {
   stream: typeof streamBase;
   interactive: typeof interactiveBase;
   run: typeof runBase;
-  
+
   // Essential session methods
-  id(): string | undefined;              // Get current session ID
-  messages(): Message[];                 // Get conversation history
-  save(name?: string): Promise<string>;  // Save session
-  clear(): void;                        // Clear session
+  id(): string | undefined; // Get current session ID
+  messages(): Message[]; // Get conversation history
+  save(name?: string): Promise<string>; // Save session
+  clear(): void; // Clear session
 }
 
 /**
@@ -100,10 +105,7 @@ export class SessionManager {
   /**
    * Load session from storage
    */
-  static async load(
-    nameOrPath: string,
-    storage: SessionStorage
-  ): Promise<SessionManager> {
+  static async load(nameOrPath: string, storage: SessionStorage): Promise<SessionManager> {
     const state = await storage.load(nameOrPath);
     const manager = new SessionManager();
     manager.state = state;
@@ -148,23 +150,23 @@ export class SessionManager {
   ): Promise<CCResult<T>> {
     // Use latest session ID from chain
     const resumeId = this.state.sessionChain[this.state.sessionChain.length - 1];
-    
+
     // Execute with session context
     const result = await fn(prompt, {
       ...options,
       resume: resumeId || options?.resume,
     });
-    
+
     // Extract session ID from response
     if (result.success) {
       // Parse session ID from Claude's response
       // Claude CLI typically returns session ID in stderr or structured output
       const sessionId = this.extractSessionId(result);
-      
+
       if (sessionId) {
         this.state.sessionChain.push(sessionId);
         this.state.currentSessionId = sessionId;
-        
+
         // Track messages
         this.addMessage('user', prompt, sessionId);
         if (typeof result.data === 'string') {
@@ -172,24 +174,21 @@ export class SessionManager {
         }
       }
     }
-    
+
     return result;
   }
 
   /**
    * Execute stream function with session context
    */
-  async *streamWithSession(
-    prompt: string,
-    options?: ClaudeOptions
-  ): AsyncIterable<any> {
+  async *streamWithSession(prompt: string, options?: ClaudeOptions): AsyncIterable<StreamChunk> {
     // Use latest session ID from chain
     const resumeId = this.state.sessionChain[this.state.sessionChain.length - 1];
-    
+
     // Track user message before streaming
     const tempSessionId = resumeId || 'pending';
     this.addMessage('user', prompt, tempSessionId);
-    
+
     // Stream with session context
     const chunks: string[] = [];
     for await (const chunk of streamBase(prompt, {
@@ -199,7 +198,7 @@ export class SessionManager {
       chunks.push(chunk.content);
       yield chunk;
     }
-    
+
     // After streaming, try to extract session ID and update message
     const fullContent = chunks.join('');
     if (fullContent) {
@@ -216,18 +215,18 @@ export class SessionManager {
     if (result.sessionId) {
       return result.sessionId;
     }
-    
+
     // Check stderr for session ID pattern
     if (result.stderr) {
       const match = result.stderr.match(/Session ID: ([a-zA-Z0-9-]+)/);
       if (match) return match[1];
     }
-    
+
     // Check if response data contains session ID
     if (typeof result.data === 'object' && result.data && 'sessionId' in result.data) {
-      return (result.data as any).sessionId;
+      return (result.data as { sessionId: string }).sessionId;
     }
-    
+
     return undefined;
   }
 
@@ -238,7 +237,7 @@ export class SessionManager {
     if (!this.storage) {
       throw new Error('No storage configured for session');
     }
-    
+
     this.state.metadata.name = name || this.state.metadata.name;
     return this.storage.save(this.state, name);
   }
@@ -262,11 +261,9 @@ export class SessionManager {
    * Create session interface
    */
   createSessionInterface(): Session {
-    const manager = this;
-    
     return {
       // Wrapped claude function
-      claude: ((promptOrFileOrStrings: any, ...args: any[]) => {
+      claude: ((promptOrFileOrStrings: string | TemplateStringsArray, ...args: unknown[]) => {
         // Handle template literal syntax
         if (Array.isArray(promptOrFileOrStrings) && 'raw' in promptOrFileOrStrings) {
           // Combine template strings
@@ -277,41 +274,45 @@ export class SessionManager {
               prompt += String(args[i]);
             }
           });
-          return manager.executeWithSession(claudeBase as any, prompt, {});
+          return this.executeWithSession(
+            (p: string, o?: ClaudeOptions) => claudeBase(p, o),
+            prompt,
+            {}
+          );
         }
-        
+
         // Regular function call
-        return manager.executeWithSession(
-          claudeBase as any,
-          promptOrFileOrStrings,
-          args[0]
+        return this.executeWithSession(
+          (p: string, o?: ClaudeOptions) => claudeBase(p, o),
+          promptOrFileOrStrings as string,
+          args[0] as ClaudeOptions | undefined
         );
       }) as ClaudeFunction,
-      
+
       // Wrapped stream function
       stream: (prompt: string, options?: ClaudeOptions) => {
-        return manager.streamWithSession(prompt, options);
+        return this.streamWithSession(prompt, options);
       },
-      
+
       // Wrapped interactive function
       interactive: async (prompt: string, options?: ClaudeOptions) => {
-        const resumeId = manager.state.sessionChain[manager.state.sessionChain.length - 1];
+        const resumeId = this.state.sessionChain[this.state.sessionChain.length - 1];
         return interactiveBase(prompt, {
           ...options,
           resume: resumeId || options?.resume,
         });
       },
-      
+
       // Wrapped run function
       run: async (prompt: string, options?: ClaudeOptions) => {
-        return manager.executeWithSession(runBase, prompt, options);
+        return this.executeWithSession(runBase, prompt, options);
       },
-      
+
       // Session methods
-      id: () => manager.getCurrentId(),
-      messages: () => manager.getMessages(),
-      save: (name?: string) => manager.save(name),
-      clear: () => manager.clear(),
+      id: () => this.getCurrentId(),
+      messages: () => this.getMessages(),
+      save: (name?: string) => this.save(name),
+      clear: () => this.clear(),
     };
   }
 }
@@ -328,10 +329,7 @@ export function session(options?: SessionOptions): Session {
 /**
  * Load an existing session
  */
-session.load = async function(
-  nameOrPath: string,
-  storage?: SessionStorage
-): Promise<Session> {
+session.load = async (nameOrPath: string, storage?: SessionStorage): Promise<Session> => {
   const storageImpl = storage || new FileSessionStorage();
   const manager = await SessionManager.load(nameOrPath, storageImpl);
   return manager.createSessionInterface();
@@ -340,7 +338,7 @@ session.load = async function(
 /**
  * List saved sessions
  */
-session.list = async function(storage?: SessionStorage): Promise<SessionInfo[]> {
+session.list = async (storage?: SessionStorage): Promise<SessionInfo[]> => {
   const storageImpl = storage || new FileSessionStorage();
   return storageImpl.list();
 };

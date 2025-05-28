@@ -15,7 +15,7 @@ console.log('---');
 try {
   let chunkCount = 0;
   let fullResponse = '';
-  
+
   for await (const chunk of stream('Write a haiku about streaming data')) {
     chunkCount++;
     if (chunk.type === 'content') {
@@ -26,7 +26,7 @@ try {
       console.error(`\n❌ Error in chunk ${chunkCount}:`, chunk.content);
     }
   }
-  
+
   console.log('\n---');
   console.log(`✅ Received ${chunkCount} chunks`);
   console.log('\nFull response:');
@@ -46,7 +46,7 @@ console.log('---');
 try {
   let chunkCount = 0;
   let fullResponse = '';
-  
+
   for await (const chunk of stream('Count from 1 to 5, one number per line', { parse: true })) {
     chunkCount++;
     if (chunk.type === 'content' && chunk.content) {
@@ -60,7 +60,7 @@ try {
       console.log(chunk.content);
     }
   }
-  
+
   console.log('\n---');
   console.log(`✅ Received ${chunkCount} chunks (non-empty)`);
   console.log('\nFull response:');
@@ -77,10 +77,12 @@ console.log('Prompt: "Explain streaming in 3 sentences"\n');
 
 try {
   let chunkCount = 0;
-  let startTime = Date.now();
-  
+  const startTime = Date.now();
+
   console.log('Streaming response:');
-  for await (const chunk of stream('Explain what streaming means in programming in exactly 3 sentences.')) {
+  for await (const chunk of stream(
+    'Explain what streaming means in programming in exactly 3 sentences.'
+  )) {
     if (chunk.type === 'content') {
       process.stdout.write(chunk.content);
       chunkCount++;
@@ -88,7 +90,7 @@ try {
       console.error('\n❌ Error:', chunk.content);
     }
   }
-  
+
   const duration = Date.now() - startTime;
   console.log(`\n\n✅ Streamed ${chunkCount} chunks in ${duration}ms`);
 } catch (error) {
