@@ -11,7 +11,7 @@ ChannelCoder is a streamlined SDK/CLI wrapper for Claude Code that:
 
 ## Docker Mode Vision
 
-Create a "docker mode" that allows running Claude CLI in an isolated Docker container with the dangerous `--permission-all` flag, providing safe execution of potentially risky operations while maintaining the SDK's philosophy of simplicity.
+Create a "docker mode" that allows running Claude CLI in an isolated Docker container with the dangerous `--dangerously-skip-permissions` flag, providing safe execution of potentially risky operations while maintaining the SDK's philosophy of simplicity.
 
 ## Research Tasks
 
@@ -86,7 +86,7 @@ await s.claude('Do dangerous things');
 - Resource quotas
 
 #### B. Permission Model
-- How to safely pass `--permission-all` to Claude
+- How to safely pass `--dangerously-skip-permissions` to Claude
 - Audit logging of dangerous operations
 - Confirmation prompts for risky actions
 - Sandbox escape prevention

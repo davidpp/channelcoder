@@ -2,7 +2,7 @@
 
 ## Overview
 
-Docker mode has been successfully implemented in ChannelCoder, allowing users to run Claude CLI in isolated Docker containers with enhanced security and full permissions.
+Docker mode has been successfully implemented in ChannelCoder, allowing users to run Claude CLI in isolated Docker containers with enhanced security and dangerous permissions.
 
 ## Implementation Details
 
@@ -130,4 +130,4 @@ While the current implementation is complete and functional, potential future en
 
 ## Conclusion
 
-Docker mode successfully extends ChannelCoder with secure, isolated execution while maintaining the library's simplicity and Unix philosophy. Users can now safely run Claude with full permissions in controlled environments.
+Docker mode successfully extends ChannelCoder with secure, isolated execution while maintaining the library's simplicity and Unix philosophy. Users can now safely run Claude with dangerous permissions in controlled environments.

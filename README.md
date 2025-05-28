@@ -127,7 +127,7 @@ const result2 = await run('Analyze code', { tools: ['Read'] });
 
 ### 🐳 Docker Mode
 
-Run Claude in an isolated Docker container for enhanced security with full permissions:
+Run Claude in an isolated Docker container for enhanced security with dangerous permissions:
 
 ```typescript
 // Simple Docker mode - auto-detect Dockerfile

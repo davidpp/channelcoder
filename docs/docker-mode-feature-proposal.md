@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Add Docker support to channelcoder to enable running Claude CLI in isolated containers with full permissions (`--permission-all`), while maintaining the SDK's simplicity and Unix philosophy.
+Add Docker support to channelcoder to enable running Claude CLI in isolated containers with dangerous permissions (`--dangerously-skip-permissions`), while maintaining the SDK's simplicity and Unix philosophy.
 
 ## Technical Implementation
 
@@ -170,7 +170,7 @@ RUN npm install -g @anthropic-ai/claude-code
 
 ## Benefits
 
-1. **Safety**: Run with `--permission-all` in isolated environment
+1. **Safety**: Run with `--dangerously-skip-permissions` in isolated environment
 2. **Flexibility**: Users control their container environment
 3. **Simplicity**: Just add `docker: true` to enable
 4. **Compatibility**: Works with existing Docker workflows
