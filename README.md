@@ -125,6 +125,93 @@ await interactive('Debug this error');
 const result2 = await run('Analyze code', { tools: ['Read'] });
 ```
 
+### 🐳 Docker Mode
+
+Run Claude in an isolated Docker container for enhanced security with full permissions:
+
+```typescript
+// Simple Docker mode - auto-detect Dockerfile
+await claude('Risky operation', { docker: true });
+
+// Specify Docker image
+await claude('Analyze system', { 
+  docker: { image: 'my-claude:latest' } 
+});
+
+// With custom mounts and environment
+await claude('Process data', {
+  docker: {
+    image: 'claude-sandbox',
+    mounts: ['./data:/data:ro'],
+    env: { NODE_ENV: 'production' }
+  }
+});
+
+// Control authentication mounting
+await claude('Secure task', {
+  docker: {
+    image: 'secure-claude',
+    auth: { 
+      mountHostAuth: false  // Don't mount ~/.claude.json
+    }
+  }
+});
+```
+
+#### Setting Up Docker Mode
+
+1. **Create a Dockerfile** with Claude CLI installed:
+```dockerfile
+FROM node:20-slim
+RUN npm install -g @anthropic-ai/claude-code
+WORKDIR /workspace
+```
+
+2. **Build your image**:
+```bash
+docker build -t my-claude .
+```
+
+3. **Use with channelcoder**:
+```typescript
+await claude('Task', { docker: { image: 'my-claude' } });
+```
+
+#### Auto-Detection
+
+When using `docker: true`, channelcoder will:
+1. Look for a `Dockerfile` in your project
+2. Build an image automatically (with caching)
+3. Mount your working directory as `/workspace`
+4. Mount your Claude authentication (`~/.claude.json`)
+
+#### Docker Options
+
+```typescript
+interface DockerOptions {
+  // Auto-detect Dockerfile (default: true)
+  auto?: boolean;
+  
+  // Docker image to use
+  image?: string;
+  
+  // Path to Dockerfile (default: ./Dockerfile)
+  dockerfile?: string;
+  
+  // Authentication options
+  auth?: {
+    mountHostAuth?: boolean;  // Mount ~/.claude.json (default: true)
+    customAuthPath?: string;  // Override auth file location
+  };
+  
+  // Additional volume mounts
+  mounts?: string[];  // Docker format: "host:container:mode"
+  
+  // Environment variables
+  env?: Record<string, string>;
+}
+```
+
 ## CLI Reference
 
 ```bash

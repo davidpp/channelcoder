@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import { resolveSystemPrompt } from './loader.js';
-import type { CCOptions, CCResult, PromptConfig, StreamChunk } from './types.js';
+import { DockerManager } from './docker.js';
+import type { CCOptions, CCResult, PromptConfig, StreamChunk, ResolvedDockerConfig } from './types.js';
 
 /**
  * Process manager for Claude Code CLI execution
@@ -8,6 +9,7 @@ import type { CCOptions, CCResult, PromptConfig, StreamChunk } from './types.js'
 export class CCProcess {
   private claudeAvailable?: boolean;
   private skipAvailabilityCheck = false;
+  private dockerManager: DockerManager;
 
   constructor(private defaultOptions: CCOptions) {
     // Allow skipping availability check for testing
@@ -15,6 +17,8 @@ export class CCProcess {
       process.env.NODE_ENV === 'test' ||
       process.env.BUN_ENV === 'test' ||
       process.env.SKIP_CLAUDE_CHECK === 'true';
+    
+    this.dockerManager = new DockerManager();
   }
 
   /**
@@ -59,6 +63,11 @@ export class CCProcess {
    * Execute a prompt and wait for the result
    */
   async execute(prompt: string, options: CCOptions & PromptConfig): Promise<CCResult> {
+    // Handle Docker mode
+    if (options.docker) {
+      return this.executeInDocker(prompt, options);
+    }
+
     // Check if Claude CLI is available
     if (!(await this.checkClaudeAvailable())) {
       return {
@@ -249,6 +258,12 @@ export class CCProcess {
     prompt: string,
     options: CCOptions & PromptConfig & { parse?: boolean }
   ): AsyncIterable<StreamChunk> {
+    // Handle Docker mode
+    if (options.docker) {
+      yield* this.streamInDocker(prompt, options);
+      return;
+    }
+
     // Check if Claude CLI is available
     if (!(await this.checkClaudeAvailable())) {
       yield {
@@ -570,6 +585,405 @@ export class CCProcess {
       return {
         type: 'content',
         content: line,
+        timestamp: Date.now(),
+      };
+    }
+  }
+
+  /**
+   * Execute in Docker container
+   */
+  private async executeInDocker(
+    prompt: string,
+    options: CCOptions & PromptConfig
+  ): Promise<CCResult> {
+    // Check if Docker is available
+    if (!(await this.dockerManager.checkDockerAvailable())) {
+      return {
+        success: false,
+        error: 'Docker not found. Please install Docker to use Docker mode.',
+      };
+    }
+
+    try {
+      // Resolve Docker configuration
+      const dockerConfig = await this.dockerManager.resolveDockerConfig(options.docker!);
+
+      // Build image if needed
+      if (dockerConfig.needsBuild && dockerConfig.dockerfilePath) {
+        const imageExists = await this.dockerManager.imageExists(dockerConfig.image);
+        if (!imageExists) {
+          await this.dockerManager.buildImage(dockerConfig.dockerfilePath, dockerConfig.image);
+        }
+      }
+
+      // Build Docker args
+      const dockerArgs = this.dockerManager.buildDockerArgs(dockerConfig, false);
+      
+      // Build Claude command args
+      const claudeCmd = await this.buildCommand(options);
+      const claudeArgs = claudeCmd.slice(1); // Remove 'claude' from args
+      
+      // Combine Docker and Claude args
+      const fullArgs = [...dockerArgs, 'claude', ...claudeArgs];
+
+      // Execute with Docker
+      const proc = spawn('docker', fullArgs, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      // Write prompt to stdin
+      if (proc.stdin && !options.resume && !options.continue) {
+        proc.stdin.write(prompt);
+        proc.stdin.end();
+      }
+
+      // Set up timeout if specified
+      let timeoutId: Timer | undefined;
+      if (options.timeout) {
+        timeoutId = setTimeout(() => {
+          proc.kill();
+        }, options.timeout);
+      }
+
+      // Collect output
+      let stdout = '';
+      let stderr = '';
+
+      if (proc.stdout) {
+        proc.stdout.on('data', (chunk) => {
+          stdout += chunk.toString();
+        });
+      }
+
+      if (proc.stderr) {
+        proc.stderr.on('data', (chunk) => {
+          stderr += chunk.toString();
+        });
+      }
+
+      // Wait for process to exit
+      const exitCode = await new Promise<number>((resolve, reject) => {
+        proc.on('exit', (code) => resolve(code || 0));
+        proc.on('error', reject);
+      });
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      // Log output if verbose
+      if (options.verbose) {
+        if (stdout) console.log('STDOUT:', stdout);
+        if (stderr) console.error('STDERR:', stderr);
+      }
+
+      // Parse result (same as regular execution)
+      const result: CCResult = {
+        success: exitCode === 0,
+        stdout,
+        stderr,
+      };
+
+      if (exitCode !== 0) {
+        result.error = `Process exited with code ${exitCode}`;
+        if (stderr) {
+          result.error += `\nStderr: ${stderr}`;
+        }
+        if (stdout) {
+          // Try to parse error from stdout if it's JSON
+          try {
+            const parsed = JSON.parse(stdout);
+            if (parsed.is_error && parsed.result) {
+              result.error = parsed.result;
+            }
+          } catch {
+            // Not JSON, include raw stdout
+            result.error += `\nStdout: ${stdout}`;
+          }
+        }
+      }
+
+      // Try to extract JSON if successful
+      if (result.success && stdout) {
+        // When using --output-format json, the entire output is JSON
+        if (options.outputFormat === 'json') {
+          try {
+            const jsonData = JSON.parse(stdout);
+
+            // Extract session ID if present
+            if (jsonData.session_id) {
+              result.sessionId = jsonData.session_id;
+            }
+
+            // Also check for session ID in type: "system" messages
+            if (jsonData.type === 'system' && jsonData.session_id) {
+              result.sessionId = jsonData.session_id;
+            }
+
+            if (jsonData.type === 'result' && jsonData.result) {
+              result.data = this.parseOutput(jsonData.result);
+              if (!result.data) {
+                // If parseOutput didn't find JSON, use the raw result
+                result.data = jsonData.result;
+              }
+            }
+          } catch {
+            // Fallback to regular parsing
+            const parsed = this.parseOutput(stdout);
+            if (parsed) {
+              result.data = parsed;
+            } else {
+              result.warnings = ['No JSON output found in response'];
+            }
+          }
+        } else {
+          const parsed = this.parseOutput(stdout);
+          if (parsed) {
+            result.data = parsed;
+          } else {
+            result.warnings = ['No JSON output found in response'];
+          }
+
+          // For stream-json format, check stdout for session_id
+          try {
+            const lines = stdout.split('\n');
+            for (const line of lines) {
+              if (line.trim() && line.includes('session_id')) {
+                const data = JSON.parse(line);
+                if (data.session_id) {
+                  result.sessionId = data.session_id;
+                  break;
+                }
+              }
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        }
+      }
+
+      // Also check stderr for session ID
+      if (result.success && stderr) {
+        // Check for session ID in various formats
+        const sessionMatch = stderr.match(/Session ID: ([a-zA-Z0-9-]+)/);
+        if (sessionMatch) {
+          result.sessionId = sessionMatch[1];
+        }
+
+        // Also check for session_id in JSON output (stream-json format)
+        try {
+          // stderr might contain multiple JSON lines in stream-json format
+          const lines = stderr.split('\n');
+          for (const line of lines) {
+            if (line.trim() && line.includes('session_id')) {
+              const data = JSON.parse(line);
+              if (data.session_id) {
+                result.sessionId = data.session_id;
+                break;
+              }
+            }
+          }
+        } catch {
+          // Ignore JSON parse errors
+        }
+      }
+
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        error: `Docker execution failed: ${error}`,
+      };
+    }
+  }
+
+  /**
+   * Stream execution in Docker container
+   */
+  private async *streamInDocker(
+    prompt: string,
+    options: CCOptions & PromptConfig & { parse?: boolean }
+  ): AsyncIterable<StreamChunk> {
+    // Check if Docker is available
+    if (!(await this.dockerManager.checkDockerAvailable())) {
+      yield {
+        type: 'error',
+        content: 'Docker not found. Please install Docker to use Docker mode.',
+        timestamp: Date.now(),
+      };
+      return;
+    }
+
+    try {
+      // Resolve Docker configuration
+      const dockerConfig = await this.dockerManager.resolveDockerConfig(options.docker!);
+
+      // Build image if needed
+      if (dockerConfig.needsBuild && dockerConfig.dockerfilePath) {
+        const imageExists = await this.dockerManager.imageExists(dockerConfig.image);
+        if (!imageExists) {
+          await this.dockerManager.buildImage(dockerConfig.dockerfilePath, dockerConfig.image);
+        }
+      }
+
+      // Default parse to false for raw output
+      const shouldParse = options.parse ?? false;
+
+      // Always use stream-json for actual streaming
+      const streamOptions = {
+        ...options,
+        outputFormat: 'stream-json' as const,
+      };
+
+      // Build Docker args
+      const dockerArgs = this.dockerManager.buildDockerArgs(dockerConfig, false);
+      
+      // Build Claude command args
+      const claudeCmd = await this.buildCommand(streamOptions);
+      const claudeArgs = claudeCmd.slice(1); // Remove 'claude' from args
+      
+      // Combine Docker and Claude args
+      const fullArgs = [...dockerArgs, 'claude', ...claudeArgs];
+
+      const proc = spawn('docker', fullArgs, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      // Write prompt to stdin
+      if (proc.stdin && !options.resume && !options.continue) {
+        proc.stdin.write(prompt);
+        proc.stdin.end();
+      }
+
+      // Create a queue for chunks
+      const chunks: StreamChunk[] = [];
+      let done = false;
+      let error: Error | null = null;
+
+      // Set up timeout
+      let timeoutId: Timer | undefined;
+      let timedOut = false;
+      if (options.timeout) {
+        timeoutId = setTimeout(() => {
+          timedOut = true;
+          proc.kill('SIGTERM');
+          // Force kill after 5 seconds if still running
+          setTimeout(() => {
+            if (!done) proc.kill('SIGKILL');
+          }, 5000);
+        }, options.timeout);
+      }
+
+      // Process stdout
+      if (proc.stdout) {
+        let buffer = '';
+        proc.stdout.setEncoding('utf8');
+
+        proc.stdout.on('data', (chunk: string) => {
+          if (!shouldParse) {
+            // Raw mode - yield raw JSON chunks directly
+            chunks.push({
+              type: 'content',
+              content: chunk,
+              timestamp: Date.now(),
+            });
+          } else {
+            // Parse mode - parse JSON and extract content
+            buffer += chunk;
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.trim()) {
+                const parsed = this.parseStreamLine(line);
+                // Skip empty content chunks in parse mode
+                if (parsed.content || parsed.type === 'error') {
+                  chunks.push(parsed);
+                }
+              }
+            }
+          }
+        });
+
+        proc.stdout.on('end', () => {
+          if (shouldParse && buffer.trim()) {
+            // Parse mode - handle remaining buffer
+            const parsed = this.parseStreamLine(buffer);
+            if (parsed.content || parsed.type === 'error') {
+              chunks.push(parsed);
+            }
+          }
+          // Raw mode doesn't need end handling since we stream everything
+        });
+      }
+
+      // Capture stderr for better error messages
+      let stderrBuffer = '';
+      if (proc.stderr) {
+        proc.stderr.setEncoding('utf8');
+        proc.stderr.on('data', (chunk: string) => {
+          stderrBuffer += chunk;
+        });
+      }
+
+      // Handle process events
+      proc.on('error', (err) => {
+        error = err;
+        done = true;
+      });
+
+      proc.on('exit', (code, signal) => {
+        if (code !== 0 && !error) {
+          let errorMessage: string;
+          if (timedOut) {
+            errorMessage = `Request timed out after ${options.timeout}ms`;
+          } else {
+            errorMessage = `Process exited with code ${code}`;
+            if (signal) {
+              errorMessage += ` (signal: ${signal})`;
+            }
+          }
+          if (stderrBuffer.trim()) {
+            errorMessage += `\n${stderrBuffer.trim()}`;
+          }
+          chunks.push({
+            type: 'error',
+            content: errorMessage,
+            timestamp: Date.now(),
+          });
+        }
+        done = true;
+      });
+
+      // Yield chunks as they become available
+      while (!done || chunks.length > 0) {
+        // Check for error first
+        if (error) {
+          yield {
+            type: 'error',
+            content: `Stream execution failed: ${(error as Error).message}`,
+            timestamp: Date.now(),
+          };
+          break;
+        }
+
+        if (chunks.length > 0) {
+          const chunk = chunks.shift();
+          if (chunk) yield chunk;
+        } else if (!done) {
+          // Wait a bit for more chunks
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+      }
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    } catch (error) {
+      yield {
+        type: 'error',
+        content: `Docker stream execution failed: ${error}`,
         timestamp: Date.now(),
       };
     }

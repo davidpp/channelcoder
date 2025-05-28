@@ -3,6 +3,7 @@ import { closeSync, openSync, writeSync } from 'node:fs';
 import { loadPromptFile } from './loader.js';
 import { CCProcess } from './process.js';
 import { PromptTemplate } from './template.js';
+import { DockerManager } from './docker.js';
 import type {
   CCOptions,
   CCResult,
@@ -11,6 +12,7 @@ import type {
   LaunchResult,
   PromptConfig,
   StreamChunk,
+  DockerOptions,
 } from './types.js';
 import { validateInput } from './utils/validation.js';
 
@@ -48,6 +50,9 @@ export interface ClaudeOptions {
   // Process control
   detached?: boolean; // Run in detached mode (background)
   logFile?: string; // Log file path for detached mode output
+  
+  // Docker execution
+  docker?: boolean | DockerOptions; // Run in Docker container
 }
 
 // Internal: Detect if input is a file path
@@ -72,6 +77,7 @@ function convertOptions(options: ClaudeOptions): CCOptions & PromptConfig {
     continue: options.continue,
     maxTurns: options.maxTurns,
     timeout: options.timeout, // No default timeout
+    docker: options.docker,
   };
 
   const promptConfig: PromptConfig = {};
@@ -102,7 +108,7 @@ export interface ClaudeFunction {
 const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Promise<CCResult> => {
   const template = new PromptTemplate();
   const ccOptions = convertOptions(options);
-  const process = new CCProcess(ccOptions);
+  const ccProcess = new CCProcess(ccOptions);
   const mode = options.mode || 'run';
 
   let prompt: string;
@@ -135,7 +141,7 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
 
   // Handle dry-run mode
   if (options.dryRun) {
-    const args = await process.buildCommand(mergedOptions);
+    const args = await ccProcess.buildCommand(mergedOptions);
 
     // Build the base command
     const baseCommand = args
@@ -179,7 +185,7 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
 
   // Handle detached mode
   if (options.detached) {
-    const args = await process.buildCommand(mergedOptions);
+    const args = await ccProcess.buildCommand(mergedOptions);
 
     // Set up stdio based on logFile
     let stdio: 'ignore' | ['pipe', number, number] = 'ignore';
@@ -233,7 +239,7 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
     case 'stream': {
       // Collect stream chunks into result
       const chunks: string[] = [];
-      for await (const chunk of process.stream(prompt, mergedOptions)) {
+      for await (const chunk of ccProcess.stream(prompt, mergedOptions)) {
         chunks.push(chunk.content);
       }
       return {
@@ -243,7 +249,7 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
     }
 
     default:
-      return process.execute(prompt, mergedOptions);
+      return ccProcess.execute(prompt, mergedOptions);
   }
 };
 
@@ -255,8 +261,64 @@ async function launchInteractive(
   options: CCOptions & PromptConfig
 ): Promise<LaunchResult> {
   try {
-    const process = new CCProcess({ ...options, mode: 'interactive' });
-    const args = await process.buildCommand({ ...options, mode: 'interactive' });
+    // Handle Docker mode for interactive
+    if (options.docker) {
+      const dockerManager = new DockerManager();
+      
+      // Check if Docker is available
+      if (!(await dockerManager.checkDockerAvailable())) {
+        console.error('Docker not found. Please install Docker to use Docker mode.');
+        global.process.exit(1);
+      }
+      
+      // Resolve Docker configuration
+      const dockerConfig = await dockerManager.resolveDockerConfig(options.docker);
+      
+      // Build image if needed
+      if (dockerConfig.needsBuild && dockerConfig.dockerfilePath) {
+        const imageExists = await dockerManager.imageExists(dockerConfig.image);
+        if (!imageExists) {
+          await dockerManager.buildImage(dockerConfig.dockerfilePath, dockerConfig.image);
+        }
+      }
+      
+      // Build Docker args for interactive mode
+      const dockerArgs = dockerManager.buildDockerArgs(dockerConfig, true);
+      
+      // Build Claude command args
+      const ccProcess = new CCProcess({ ...options, mode: 'interactive' });
+      const claudeCmd = await ccProcess.buildCommand({ ...options, mode: 'interactive' });
+      const claudeArgs = claudeCmd.slice(1); // Remove 'claude' from args
+      
+      // Helper to escape single quotes for shell
+      const escapeShell = (str: string) => str.replace(/'/g, "'\\''");
+      
+      // Build shell command with Docker
+      let shellCommand: string;
+      const dockerArgsStr = dockerArgs.map(arg => `'${escapeShell(arg)}'`).join(' ');
+      const claudeArgsStr = claudeArgs.map(arg => `'${escapeShell(arg)}'`).join(' ');
+      
+      if (prompt && !options.resume && !options.continue) {
+        // Use exec with echo piped to docker run claude
+        const escapedPrompt = escapeShell(prompt);
+        shellCommand = `exec echo '${escapedPrompt}' | exec docker ${dockerArgsStr} claude ${claudeArgsStr}`;
+      } else {
+        // No prompt - just exec docker run claude directly
+        shellCommand = `exec docker ${dockerArgsStr} claude ${claudeArgsStr}`;
+      }
+      
+      // Execute with shell, this replaces the current process
+      execSync(shellCommand, {
+        stdio: 'inherit',
+      });
+      
+      // This line will never be reached because exec replaces the process
+      return { exitCode: 0 };
+    }
+    
+    // Non-Docker mode (original implementation)
+    const ccProcess = new CCProcess({ ...options, mode: 'interactive' });
+    const args = await ccProcess.buildCommand({ ...options, mode: 'interactive' });
 
     // Remove 'claude' from args as it's the command
     const claudeArgs = args.slice(1);
@@ -289,7 +351,7 @@ async function launchInteractive(
   } catch (error) {
     // This will only execute if execSync fails to launch
     console.error('Failed to launch Claude:', error);
-    process.exit(1);
+    global.process.exit(1);
   }
 }
 
@@ -376,7 +438,7 @@ export async function* stream(
 ): AsyncIterable<StreamChunk> {
   const template = new PromptTemplate();
   const ccOptions = convertOptions(options);
-  const process = new CCProcess({ ...ccOptions, mode: 'stream' });
+  const ccProcess = new CCProcess({ ...ccOptions, mode: 'stream' });
 
   let prompt: string;
   let mergedOptions = ccOptions;
@@ -404,7 +466,7 @@ export async function* stream(
     prompt = template.interpolate(promptOrFile, options.data || {});
   }
 
-  yield* process.stream(prompt, { ...mergedOptions, mode: 'stream', parse: options.parse });
+  yield* ccProcess.stream(prompt, { ...mergedOptions, mode: 'stream', parse: options.parse });
 }
 
 /**

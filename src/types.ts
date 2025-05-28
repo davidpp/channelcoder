@@ -63,6 +63,9 @@ export interface CCOptions {
 
   // Execution mode
   mode?: 'run' | 'stream' | 'interactive';
+
+  // Docker execution options
+  docker?: boolean | DockerOptions;
 }
 
 /**
@@ -142,4 +145,55 @@ export interface LaunchResult {
 
   // Error message if launch failed
   error?: string;
+}
+
+/**
+ * Docker configuration options
+ */
+export interface DockerOptions {
+  // Auto-detection mode (default: true)
+  auto?: boolean;
+
+  // Docker image to use (overrides auto-detection)
+  image?: string;
+
+  // Path to Dockerfile to build (default: ./Dockerfile if exists)
+  dockerfile?: string;
+
+  // Authentication options
+  auth?: {
+    // Mount host Claude auth (default: true)
+    mountHostAuth?: boolean;
+    // Custom auth file path (default: ~/.claude.json)
+    customAuthPath?: string;
+  };
+
+  // Additional volume mounts (Docker format: "host:container:mode")
+  mounts?: string[];
+
+  // Additional environment variables
+  env?: Record<string, string>;
+}
+
+/**
+ * Resolved Docker configuration after auto-detection
+ */
+export interface ResolvedDockerConfig {
+  // Execution mode
+  mode: 'image' | 'dockerfile' | 'auto';
+
+  // Docker image name
+  image: string;
+
+  // All volume mounts including auth
+  mounts: string[];
+
+  // All environment variables
+  env: Record<string, string>;
+
+  // Whether to build image first
+  needsBuild?: boolean;
+
+  // Dockerfile path if building
+  dockerfilePath?: string;
 }
