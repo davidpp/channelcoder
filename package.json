@@ -1,6 +1,6 @@
 {
   "name": "channelcoder",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "A streamlined SDK and CLI for Claude Code - Channel your prompts to Claude",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -16,7 +16,11 @@
       "import": "./dist/index.mjs"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsup && bun run scripts/add-shebang.ts",
     "build:watch": "tsup --watch",
