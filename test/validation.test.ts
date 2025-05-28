@@ -5,7 +5,7 @@ describe('input validation with Zod schemas', () => {
   // Tests temporarily removed due to test isolation issues with fs mocking in loader.test.ts
   // These tests pass when run individually but fail when run with all tests
   // TODO: Fix test isolation issue and re-enable these tests
-  
+
   test.skip('validates required fields in prompt file', async () => {
     // Test with missing required field
     const result = await claude('./test/prompts/validated.md', {

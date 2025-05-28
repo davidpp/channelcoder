@@ -36,7 +36,7 @@ export class DockerManager {
    */
   async resolveDockerConfig(options: boolean | DockerOptions): Promise<ResolvedDockerConfig> {
     // Normalize boolean to options object
-    const dockerOpts: DockerOptions = options === true ? { auto: true } : options;
+    const dockerOpts: DockerOptions = typeof options === 'boolean' ? { auto: true } : options;
 
     // If manual image specified, use it directly
     if (dockerOpts.image) {
@@ -184,16 +184,19 @@ export class DockerManager {
    */
   private async generateImageName(dockerfilePath: string): Promise<string> {
     // Use project directory name and dockerfile name
-    const projectName = path.basename(process.cwd()).toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    const projectName = path
+      .basename(process.cwd())
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-');
     const dockerfileName = path.basename(dockerfilePath, path.extname(dockerfilePath));
-    
+
     // Create a simple hash from the dockerfile path
     const hash = dockerfilePath.split('').reduce((acc, char) => {
       return ((acc << 5) - acc + char.charCodeAt(0)) | 0;
     }, 0);
-    
+
     const shortHash = Math.abs(hash).toString(16).substring(0, 6);
-    
+
     return `channelcoder-${projectName}-${dockerfileName}-${shortHash}`;
   }
 }

@@ -15,7 +15,7 @@ describe('Docker Integration', () => {
       };
 
       const args = dockerManager.buildDockerArgs(config, false);
-      
+
       expect(args).toContain('run');
       expect(args).toContain('--rm');
       expect(args).toContain('-i');
@@ -35,7 +35,7 @@ describe('Docker Integration', () => {
       };
 
       const args = dockerManager.buildDockerArgs(config, true);
-      
+
       expect(args).toContain('run');
       expect(args).toContain('--rm');
       expect(args).toContain('-it'); // Interactive mode uses -it
@@ -54,7 +54,7 @@ describe('Docker Integration', () => {
       };
 
       const args = dockerManager.buildDockerArgs(config);
-      
+
       expect(args).toContain('-e');
       expect(args).toContain('API_KEY=secret');
       expect(args).toContain('NODE_ENV=test');
@@ -64,15 +64,12 @@ describe('Docker Integration', () => {
       const config = {
         mode: 'image' as const,
         image: 'test',
-        mounts: [
-          '/host/data:/container/data:ro',
-          '/host/config:/container/config:rw',
-        ],
+        mounts: ['/host/data:/container/data:ro', '/host/config:/container/config:rw'],
         env: {},
       };
 
       const args = dockerManager.buildDockerArgs(config);
-      
+
       expect(args).toContain('/host/data:/container/data:ro');
       expect(args).toContain('/host/config:/container/config:rw');
     });
@@ -81,7 +78,7 @@ describe('Docker Integration', () => {
   describe('Docker Options Processing', () => {
     it('should normalize boolean docker option', async () => {
       const dockerManager = new DockerManager();
-      
+
       // This will fail without a Dockerfile, but we're testing the normalization
       try {
         await dockerManager.resolveDockerConfig(true);
@@ -96,9 +93,9 @@ describe('Docker Integration', () => {
       const options: DockerOptions = {
         image: 'claude-sandbox:latest',
       };
-      
+
       const config = await dockerManager.resolveDockerConfig(options);
-      
+
       expect(config.mode).toBe('image');
       expect(config.image).toBe('claude-sandbox:latest');
       expect(config.needsBuild).toBeUndefined();
@@ -112,9 +109,9 @@ describe('Docker Integration', () => {
           customAuthPath: '/custom/path/.claude.json',
         },
       };
-      
+
       const config = await dockerManager.resolveDockerConfig(options);
-      
+
       // The auth path would be included in mounts if the file existed
       expect(config.mode).toBe('image');
       expect(config.image).toBe('test');

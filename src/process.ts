@@ -1,7 +1,13 @@
 import { spawn } from 'child_process';
 import { resolveSystemPrompt } from './loader.js';
 import { DockerManager } from './docker.js';
-import type { CCOptions, CCResult, PromptConfig, StreamChunk, ResolvedDockerConfig } from './types.js';
+import type {
+  CCOptions,
+  CCResult,
+  PromptConfig,
+  StreamChunk,
+  ResolvedDockerConfig,
+} from './types.js';
 
 /**
  * Process manager for Claude Code CLI execution
@@ -17,7 +23,7 @@ export class CCProcess {
       process.env.NODE_ENV === 'test' ||
       process.env.BUN_ENV === 'test' ||
       process.env.SKIP_CLAUDE_CHECK === 'true';
-    
+
     this.dockerManager = new DockerManager();
   }
 
@@ -619,11 +625,11 @@ export class CCProcess {
 
       // Build Docker args
       const dockerArgs = this.dockerManager.buildDockerArgs(dockerConfig, false);
-      
+
       // Build Claude command args
       const claudeCmd = await this.buildCommand(options);
       const claudeArgs = claudeCmd.slice(1); // Remove 'claude' from args
-      
+
       // Combine Docker and Claude args
       const fullArgs = [...dockerArgs, 'claude', ...claudeArgs];
 
@@ -838,11 +844,11 @@ export class CCProcess {
 
       // Build Docker args
       const dockerArgs = this.dockerManager.buildDockerArgs(dockerConfig, false);
-      
+
       // Build Claude command args
       const claudeCmd = await this.buildCommand(streamOptions);
       const claudeArgs = claudeCmd.slice(1); // Remove 'claude' from args
-      
+
       // Combine Docker and Claude args
       const fullArgs = [...dockerArgs, 'claude', ...claudeArgs];
 

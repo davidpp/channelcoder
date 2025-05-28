@@ -50,7 +50,7 @@ export interface ClaudeOptions {
   // Process control
   detached?: boolean; // Run in detached mode (background)
   logFile?: string; // Log file path for detached mode output
-  
+
   // Docker execution
   docker?: boolean | DockerOptions; // Run in Docker container
 }
@@ -141,6 +141,71 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
 
   // Handle dry-run mode
   if (options.dryRun) {
+    // Handle Docker mode in dry-run
+    if (options.docker) {
+      const dockerManager = new DockerManager();
+      
+      try {
+        // Resolve Docker configuration
+        const dockerConfig = await dockerManager.resolveDockerConfig(options.docker);
+        
+        // Build Docker args
+        const dockerArgs = dockerManager.buildDockerArgs(dockerConfig, mode === 'interactive');
+        
+        // Build Claude command args
+        const claudeCmd = await ccProcess.buildCommand(mergedOptions);
+        const claudeArgs = claudeCmd.slice(1); // Remove 'claude' from args
+        
+        // Combine Docker and Claude args
+        const fullArgs = [...dockerArgs, 'claude', ...claudeArgs];
+        
+        // Build the full command
+        const baseCommand = ['docker', ...fullArgs]
+          .map((arg) => {
+            // Escape arguments that contain spaces or special characters
+            if (arg.includes(' ') || arg.includes('"') || arg.includes("'")) {
+              return `"${arg.replace(/"/g, '\\"')}"`;
+            }
+            return arg;
+          })
+          .join(' ');
+        
+        // Create the full command with piped input
+        let fullCommand: string;
+        if (!mergedOptions.resume && !mergedOptions.continue) {
+          // Escape the prompt for shell echo command
+          const escapedPrompt = prompt
+            .replace(/\\/g, '\\\\')
+            .replace(/"/g, '\\"')
+            .replace(/\$/g, '\\$')
+            .replace(/`/g, '\\`')
+            .replace(/\n/g, '\\n');
+          
+          // Use echo -e to handle newlines properly
+          fullCommand = `echo -e "${escapedPrompt}" | ${baseCommand}`;
+        } else {
+          // For resume/continue, no prompt is needed
+          fullCommand = baseCommand;
+        }
+        
+        return {
+          success: true,
+          data: {
+            command: 'docker',
+            args: fullArgs,
+            fullCommand,
+            prompt, // Include raw prompt for reference
+          },
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: `Docker configuration error: ${error}`,
+        };
+      }
+    }
+    
+    // Non-Docker dry-run
     const args = await ccProcess.buildCommand(mergedOptions);
 
     // Build the base command
@@ -264,16 +329,16 @@ async function launchInteractive(
     // Handle Docker mode for interactive
     if (options.docker) {
       const dockerManager = new DockerManager();
-      
+
       // Check if Docker is available
       if (!(await dockerManager.checkDockerAvailable())) {
         console.error('Docker not found. Please install Docker to use Docker mode.');
         global.process.exit(1);
       }
-      
+
       // Resolve Docker configuration
       const dockerConfig = await dockerManager.resolveDockerConfig(options.docker);
-      
+
       // Build image if needed
       if (dockerConfig.needsBuild && dockerConfig.dockerfilePath) {
         const imageExists = await dockerManager.imageExists(dockerConfig.image);
@@ -281,23 +346,23 @@ async function launchInteractive(
           await dockerManager.buildImage(dockerConfig.dockerfilePath, dockerConfig.image);
         }
       }
-      
+
       // Build Docker args for interactive mode
       const dockerArgs = dockerManager.buildDockerArgs(dockerConfig, true);
-      
+
       // Build Claude command args
       const ccProcess = new CCProcess({ ...options, mode: 'interactive' });
       const claudeCmd = await ccProcess.buildCommand({ ...options, mode: 'interactive' });
       const claudeArgs = claudeCmd.slice(1); // Remove 'claude' from args
-      
+
       // Helper to escape single quotes for shell
       const escapeShell = (str: string) => str.replace(/'/g, "'\\''");
-      
+
       // Build shell command with Docker
       let shellCommand: string;
-      const dockerArgsStr = dockerArgs.map(arg => `'${escapeShell(arg)}'`).join(' ');
-      const claudeArgsStr = claudeArgs.map(arg => `'${escapeShell(arg)}'`).join(' ');
-      
+      const dockerArgsStr = dockerArgs.map((arg) => `'${escapeShell(arg)}'`).join(' ');
+      const claudeArgsStr = claudeArgs.map((arg) => `'${escapeShell(arg)}'`).join(' ');
+
       if (prompt && !options.resume && !options.continue) {
         // Use exec with echo piped to docker run claude
         const escapedPrompt = escapeShell(prompt);
@@ -306,16 +371,16 @@ async function launchInteractive(
         // No prompt - just exec docker run claude directly
         shellCommand = `exec docker ${dockerArgsStr} claude ${claudeArgsStr}`;
       }
-      
+
       // Execute with shell, this replaces the current process
       execSync(shellCommand, {
         stdio: 'inherit',
       });
-      
+
       // This line will never be reached because exec replaces the process
       return { exitCode: 0 };
     }
-    
+
     // Non-Docker mode (original implementation)
     const ccProcess = new CCProcess({ ...options, mode: 'interactive' });
     const args = await ccProcess.buildCommand({ ...options, mode: 'interactive' });
