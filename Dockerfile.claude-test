@@ -1,0 +1,27 @@
+# Simplified Claude Code Docker image for testing
+FROM node:20-slim
+
+# Install basic tools
+RUN apt-get update && apt-get install -y \
+  git \
+  less \
+  procps \
+  && rm -rf /var/lib/apt/lists/*
+
+# Create directories
+RUN mkdir -p /workspace /home/node/.claude && \
+  chown -R node:node /workspace /home/node/.claude
+
+# Switch to node user
+USER node
+WORKDIR /workspace
+
+# Install Claude Code CLI
+RUN npm install -g @anthropic-ai/claude-code
+
+# Set up environment
+ENV SHELL=/bin/bash
+ENV PATH=$PATH:/usr/local/share/npm-global/bin
+
+# Default command
+CMD ["claude"]
