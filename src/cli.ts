@@ -49,6 +49,10 @@ Options:
   --session <name>         Use session mode with given name
   --load-session <name>    Load and continue existing session
   --list-sessions          List all saved sessions
+  --docker                 Run in Docker container (auto-detect Dockerfile)
+  --docker-image <image>   Use specific Docker image
+  --docker-mount <mount>   Add Docker volume mount (can be used multiple times)
+  --docker-env <key=val>   Add Docker environment variable (can be used multiple times)
   -v, --verbose            Verbose output
   -h, --help               Show this help
 
@@ -69,6 +73,11 @@ Examples:
   channelcoder prompts/debug.md --session my-debug
   channelcoder prompts/continue.md --load-session my-debug
   channelcoder --list-sessions
+  
+  # Docker mode
+  channelcoder prompts/risky.md --docker
+  channelcoder -p "Delete files" --docker-image claude-sandbox
+  channelcoder analyze.md --docker-image my-claude --docker-mount ./data:/data:ro
 `);
 }
 
@@ -129,6 +138,10 @@ async function main() {
       session: { type: 'string' },
       'load-session': { type: 'string' },
       'list-sessions': { type: 'boolean' },
+      docker: { type: 'boolean' },
+      'docker-image': { type: 'string' },
+      'docker-mount': { type: 'string', multiple: true },
+      'docker-env': { type: 'string', multiple: true },
     },
     allowPositionals: true,
   });
@@ -241,6 +254,51 @@ async function main() {
     // Add verbose flag
     if (values.verbose) {
       options.verbose = true;
+    }
+
+    // Handle Docker options
+    if (values.docker || values['docker-image']) {
+      if (values['docker-image']) {
+        options.docker = { 
+          image: values['docker-image'],
+          mounts: values['docker-mount'] || [],
+          env: {},
+        };
+        
+        // Parse docker env vars
+        if (values['docker-env']) {
+          const env: Record<string, string> = {};
+          for (const envVar of values['docker-env']) {
+            const [key, ...valueParts] = envVar.split('=');
+            if (key) {
+              env[key] = valueParts.join('=');
+            }
+          }
+          (options.docker as any).env = env;
+        }
+      } else {
+        // Auto-detect mode with optional mounts/env
+        options.docker = true;
+        if (values['docker-mount'] || values['docker-env']) {
+          options.docker = {
+            auto: true,
+            mounts: values['docker-mount'] || [],
+            env: {},
+          };
+          
+          // Parse docker env vars for auto mode
+          if (values['docker-env']) {
+            const env: Record<string, string> = {};
+            for (const envVar of values['docker-env']) {
+              const [key, ...valueParts] = envVar.split('=');
+              if (key) {
+                env[key] = valueParts.join('=');
+              }
+            }
+            (options.docker as any).env = env;
+          }
+        }
+      }
     }
 
     // Handle session mode
