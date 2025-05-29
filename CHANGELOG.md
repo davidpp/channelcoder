@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1] - 2025-01-29
+
+### Fixed
+- **Interactive Mode**: Resolved "Raw mode is not supported" error when using interactive mode with the latest Claude CLI. The fix changes from shell piping to proper TTY handling, ensuring compatibility with Claude's new Ink-based interactive UI.
+
+## [2.1.0] - 2025-01-28
+
+### Added
+- **Session Management**: Save and continue conversations across multiple CLI invocations, maintaining context and history for complex multi-step workflows
+- **Detached Mode**: Run Claude operations in the background with new `detached: true` option, enabling non-blocking execution
+- **Session Storage API**: New `SessionStorage` class for managing conversation persistence with automatic cleanup
+- **Enhanced CLI**: Added `--session` flag to enable session continuity from the command line
+- **New Examples**: Added comprehensive session management examples including code review, debugging, and iterative development workflows
+
+### Changed
+- **Improved Error Handling**: Better error messages and recovery options when Claude operations fail
+- **Enhanced Process Management**: More robust subprocess handling with improved stream processing
+
+### Fixed
+- **Type Issues**: Resolved linting and type errors in session management implementation
+- **Stream Processing**: Fixed edge cases in streaming output handling
+
 ## [2.1.0] - 2025-01-28
 
 ### Added
