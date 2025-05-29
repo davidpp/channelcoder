@@ -1,4 +1,4 @@
-import { execSync, spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { closeSync, openSync, writeSync } from 'node:fs';
 import { loadPromptFile } from './loader.js';
 import { CCProcess } from './process.js';
@@ -261,33 +261,33 @@ async function launchInteractive(
     // Remove 'claude' from args as it's the command
     const claudeArgs = args.slice(1);
 
-    // Helper to escape single quotes for shell
-    const escapeShell = (str: string) => str.replace(/'/g, "'\\''");
-
-    // Build shell command with exec to replace process
-    let shellCommand: string;
-
     if (prompt && !options.resume && !options.continue) {
-      // Use exec with echo piped to claude
-      const escapedPrompt = escapeShell(prompt);
-      const escapedArgs = claudeArgs.map((arg) => `'${escapeShell(arg)}'`).join(' ');
-      shellCommand = `exec echo '${escapedPrompt}' | exec claude ${escapedArgs}`;
+      // Use spawnSync with input option to provide prompt while maintaining TTY
+      const result = spawnSync('claude', claudeArgs, {
+        stdio: ['pipe', 'inherit', 'inherit'],
+        input: prompt,
+        encoding: 'utf8',
+      });
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      return { exitCode: result.status || 0 };
     } else {
-      // No prompt - just exec claude directly
-      const escapedArgs = claudeArgs.map((arg) => `'${escapeShell(arg)}'`).join(' ');
-      shellCommand = `exec claude ${escapedArgs}`;
+      // No prompt - just run claude directly with full TTY
+      const result = spawnSync('claude', claudeArgs, {
+        stdio: 'inherit',
+      });
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      return { exitCode: result.status || 0 };
     }
-
-    // Execute with shell, this replaces the current process
-    execSync(shellCommand, {
-      stdio: 'inherit',
-    });
-
-    // This line will never be reached because exec replaces the process
-    // But TypeScript needs a return
-    return { exitCode: 0 };
   } catch (error) {
-    // This will only execute if execSync fails to launch
+    // This will only execute if spawnSync fails to launch
     console.error('Failed to launch Claude:', error);
     process.exit(1);
   }
