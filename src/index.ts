@@ -42,3 +42,13 @@ export type {
   ErrorEvent,
   ParsedLog,
 } from './stream-parser/types.js';
+
+// Re-export type guards for convenience
+export {
+  isSystemEvent,
+  isAssistantEvent,
+  isResultEvent,
+  isToolUseEvent,
+  isToolResultEvent,
+  isErrorEvent,
+} from './stream-parser/types.js';

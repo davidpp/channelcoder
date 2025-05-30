@@ -1,21 +1,28 @@
 #!/usr/bin/env bun
 
-import { session } from '../src/index.js';
+import { session, monitorLog, parseLogFile, streamParser } from '../src/index.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync } from 'fs';
 import * as readline from 'readline';
 import { homedir } from 'os';
+import type { ClaudeEvent, StreamChunk } from '../src/stream-parser/types.js';
 
 // Task state
 interface TaskState {
   sessionName: string;
-  status: 'idle' | 'running' | 'waiting_feedback' | 'completed';
+  status: 'idle' | 'running' | 'waiting_feedback' | 'completed' | 'error';
   pid?: number;
   logFile?: string;
   sessionPath: string;
   lastUpdate: Date;
   outputBuffer: string[];
+  events: ClaudeEvent[];
+  sessionId?: string;
+  totalCost?: number;
+  model?: string;
+  toolsUsed: Set<string>;
+  monitor?: () => void; // Cleanup function for monitor
 }
 
 // Global state
@@ -51,26 +58,51 @@ async function readSessionFile(path: string) {
   }
 }
 
-// Read last lines from log file
-async function readLogTail(logFile: string, lines: number = 10): Promise<string[]> {
-  try {
-    const content = await fs.readFile(logFile, 'utf-8');
-    const allLines = content.split('\n').filter(Boolean);
-    const lastLines = allLines.slice(-lines);
+// Process events to update task state
+function processEvent(event: ClaudeEvent) {
+  if (!currentTask) return;
+  
+  // Update events list
+  currentTask.events.push(event);
+  currentTask.lastUpdate = new Date();
+  
+  // Extract session ID
+  const sessionId = streamParser.extractSessionId(event);
+  if (sessionId && !currentTask.sessionId) {
+    currentTask.sessionId = sessionId;
+  }
+  
+  // Convert to chunk for output buffer
+  const chunk = streamParser.eventToChunk(event);
+  if (chunk && chunk.content) {
+    currentTask.outputBuffer.push(chunk.content);
+    // Keep only last 50 lines
+    if (currentTask.outputBuffer.length > 50) {
+      currentTask.outputBuffer = currentTask.outputBuffer.slice(-50);
+    }
+  }
+  
+  // Track tool usage
+  if (streamParser.isToolUseEvent(event)) {
+    currentTask.toolsUsed.add(event.tool);
+  }
+  
+  // Update status based on events
+  if (streamParser.isResultEvent(event)) {
+    currentTask.status = event.subtype === 'error' ? 'error' : 'completed';
+    currentTask.totalCost = event.total_cost;
+  } else if (streamParser.isAssistantEvent(event)) {
+    currentTask.model = event.message.model;
     
-    // Parse JSON chunks to extract content
-    return lastLines.map(line => {
-      try {
-        const chunk = JSON.parse(line);
-        if (chunk.content) return chunk.content;
-        if (chunk.error) return `❌ ${chunk.error}`;
-        return line;
-      } catch {
-        return line;
-      }
-    });
-  } catch {
-    return [];
+    // Check for feedback requests
+    const text = streamParser.extractAssistantText(event).toLowerCase();
+    if (text.includes('should i') || text.includes('would you like') || 
+        text.includes('continue?') || text.includes('proceed?')) {
+      currentTask.status = 'waiting_feedback';
+    }
+  } else if (streamParser.isErrorEvent(event)) {
+    currentTask.status = 'error';
+    currentTask.outputBuffer.push(`❌ Error: ${event.error}`);
   }
 }
 
@@ -93,22 +125,37 @@ async function displayUI() {
       idle: '⏸️',
       running: '⚡',
       waiting_feedback: '⏳',
-      completed: '✅'
+      completed: '✅',
+      error: '❌'
     }[currentTask.status];
     
     const statusColor = {
       idle: colors.dim,
       running: colors.blue,
       waiting_feedback: colors.yellow,
-      completed: colors.green
+      completed: colors.green,
+      error: colors.red
     }[currentTask.status];
     
     console.log(`${statusIcon} Status: ${statusColor}${currentTask.status}${colors.reset}`);
     console.log(`📁 Session: ${colors.cyan}${currentTask.sessionName}${colors.reset}`);
+    if (currentTask.sessionId) {
+      console.log(`🆔 Session ID: ${colors.dim}${currentTask.sessionId}${colors.reset}`);
+    }
     if (currentTask.pid) {
       console.log(`🔧 PID: ${currentTask.pid}`);
     }
+    if (currentTask.model) {
+      console.log(`🤖 Model: ${colors.magenta}${currentTask.model}${colors.reset}`);
+    }
+    if (currentTask.toolsUsed.size > 0) {
+      console.log(`🔨 Tools Used: ${Array.from(currentTask.toolsUsed).join(', ')}`);
+    }
+    if (currentTask.totalCost !== undefined) {
+      console.log(`💰 Cost: $${currentTask.totalCost.toFixed(4)}`);
+    }
     console.log(`⏰ Last Update: ${currentTask.lastUpdate.toLocaleTimeString()}`);
+    console.log(`📊 Events: ${currentTask.events.length}`);
   }
   
   // Output Preview Section
@@ -148,6 +195,7 @@ async function displayUI() {
     console.log(`  ${colors.yellow}/continue <feedback>${colors.reset} - Continue with feedback`);
   }
   console.log(`  ${colors.blue}/status${colors.reset} - Refresh display`);
+  console.log(`  ${colors.blue}/logs${colors.reset} - Show recent events`);
   console.log(`  ${colors.red}/stop${colors.reset} - Stop current task`);
   console.log(`  ${colors.dim}/quit${colors.reset} - Exit`);
   console.log(`\n> `);
@@ -155,6 +203,11 @@ async function displayUI() {
 
 // Start a new task
 async function startTask(prompt: string) {
+  // Clean up any existing monitor
+  if (currentTask?.monitor) {
+    currentTask.monitor();
+  }
+  
   const taskId = `test-${Date.now()}`;
   const sessionName = `task-${taskId}`;
   
@@ -171,7 +224,9 @@ async function startTask(prompt: string) {
     sessionPath: path.join(homedir(), '.channelcoder', 'sessions', `${sessionName}.json`),
     logFile: `${taskId}.log`,
     lastUpdate: new Date(),
-    outputBuffer: []
+    outputBuffer: [],
+    events: [],
+    toolsUsed: new Set()
   };
   
   // Start detached process
@@ -184,8 +239,6 @@ async function startTask(prompt: string) {
       outputFormat: 'stream-json'
     });
     
-    console.log(`Result:`, result);
-    
     if (result.success) {
       if (result.pid) {
         currentTask.pid = result.pid;
@@ -193,7 +246,20 @@ async function startTask(prompt: string) {
       } else if (result.detached) {
         console.log(`${colors.green}✅ Task started in detached mode${colors.reset}`);
       }
-      console.log(`Log file: ${currentTask.logFile}`);
+      console.log(`📄 Log file: ${currentTask.logFile}`);
+      
+      // Start real-time monitoring
+      const cleanup = monitorLog(currentTask.logFile, processEvent, {
+        onError: (error) => {
+          if (currentTask) {
+            currentTask.status = 'error';
+            currentTask.outputBuffer.push(`❌ Monitor error: ${error.message}`);
+          }
+        }
+      });
+      
+      currentTask.monitor = cleanup;
+      console.log(`📡 Real-time monitoring started`);
     } else {
       console.log(`${colors.red}❌ Failed to start task: ${result.error}${colors.reset}`);
       currentTask = null;
@@ -211,6 +277,11 @@ async function continueTask(feedback: string) {
     return;
   }
   
+  // Clean up existing monitor
+  if (currentTask.monitor) {
+    currentTask.monitor();
+  }
+  
   // Load session
   const s = await session.load(currentTask.sessionName);
   
@@ -223,44 +294,32 @@ async function continueTask(feedback: string) {
     outputFormat: 'stream-json'
   });
   
-  if (result.success && result.pid) {
-    currentTask.pid = result.pid;
-    console.log(`${colors.green}✅ Task continued with PID ${result.pid}${colors.reset}`);
+  if (result.success) {
+    if (result.pid) {
+      currentTask.pid = result.pid;
+      console.log(`${colors.green}✅ Task continued with PID ${result.pid}${colors.reset}`);
+    }
+    
+    // Restart monitoring
+    const cleanup = monitorLog(currentTask.logFile, processEvent, {
+      onError: (error) => {
+        if (currentTask) {
+          currentTask.status = 'error';
+          currentTask.outputBuffer.push(`❌ Monitor error: ${error.message}`);
+        }
+      }
+    });
+    
+    currentTask.monitor = cleanup;
   }
 }
 
-// Check task status
-async function updateTaskStatus() {
-  if (!currentTask || !currentTask.logFile) return;
+// Update session content
+async function updateSessionContent() {
+  if (!currentTask) return;
   
-  // Check if log file exists
-  if (!existsSync(currentTask.logFile)) {
-    console.log(`${colors.dim}Waiting for log file: ${currentTask.logFile}${colors.reset}`);
-    return;
-  }
-  
-  // Update output buffer
-  const newLines = await readLogTail(currentTask.logFile, 20);
-  currentTask.outputBuffer = newLines;
-  currentTask.lastUpdate = new Date();
-  
-  // Update session content
+  // Update session content from file
   sessionContent = await readSessionFile(currentTask.sessionPath) || {};
-  
-  // Check if waiting for feedback
-  if (currentTask.status === 'running') {
-    const lastLines = newLines.join('\n').toLowerCase();
-    if (lastLines.includes('feedback') || lastLines.includes('should i') || lastLines.includes('please confirm')) {
-      currentTask.status = 'waiting_feedback';
-    } else if (existsSync(currentTask.logFile)) {
-      try {
-        const content = await fs.readFile(currentTask.logFile, 'utf-8');
-        if (content.includes('"type":"result"')) {
-          currentTask.status = 'completed';
-        }
-      } catch {}
-    }
-  }
 }
 
 // Main loop
@@ -270,9 +329,9 @@ async function main() {
     output: process.stdout,
   });
   
-  // Auto-refresh
+  // Auto-refresh display (session content only)
   const refreshInterval = setInterval(async () => {
-    await updateTaskStatus();
+    await updateSessionContent();
     await displayUI();
   }, 2000);
   
@@ -288,7 +347,7 @@ async function main() {
       
       switch (cmd) {
         case 'status':
-          await updateTaskStatus();
+          await updateSessionContent();
           break;
           
         case 'continue':
@@ -301,9 +360,22 @@ async function main() {
           
         case 'stop':
           if (currentTask) {
-            // In real implementation, would kill the process
+            // Clean up monitor
+            if (currentTask.monitor) {
+              currentTask.monitor();
+            }
             currentTask.status = 'completed';
             console.log(`${colors.yellow}Task stopped${colors.reset}`);
+          }
+          break;
+          
+        case 'logs':
+          // Show raw events for debugging
+          if (currentTask && currentTask.events.length > 0) {
+            console.log(`\n${colors.bright}═══ Recent Events ═══${colors.reset}`);
+            currentTask.events.slice(-5).forEach(event => {
+              console.log(`${colors.dim}${event.type}: ${JSON.stringify(event).substring(0, 100)}...${colors.reset}`);
+            });
           }
           break;
           
@@ -311,6 +383,9 @@ async function main() {
         case 'q':
         case 'exit':
           clearInterval(refreshInterval);
+          if (currentTask?.monitor) {
+            currentTask.monitor();
+          }
           rl.close();
           process.exit(0);
           
@@ -323,13 +398,16 @@ async function main() {
     }
     
     // Refresh display
-    await updateTaskStatus();
+    await updateSessionContent();
     await displayUI();
   });
   
   // Handle Ctrl+C
   process.on('SIGINT', () => {
     clearInterval(refreshInterval);
+    if (currentTask?.monitor) {
+      currentTask.monitor();
+    }
     rl.close();
     process.exit(0);
   });

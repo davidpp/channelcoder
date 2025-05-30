@@ -2,12 +2,12 @@
  * Real-time log monitoring utilities
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
-import { Transform, type Readable } from 'node:stream';
+import { type ChildProcess, spawn } from 'node:child_process';
+import { type FSWatcher, watch } from 'node:fs';
 import * as readline from 'node:readline';
-import { watch, type FSWatcher } from 'node:fs';
-import type { ClaudeEvent } from './types.js';
+import { type Readable, Transform } from 'node:stream';
 import { parseStreamEvent } from './parser.js';
+import type { ClaudeEvent } from './types.js';
 
 /**
  * Options for monitoring a log file
@@ -17,12 +17,12 @@ export interface MonitorOptions {
    * Use file watching instead of tail (for environments without tail)
    */
   useWatch?: boolean;
-  
+
   /**
    * Initial number of lines to read when starting
    */
   initialLines?: number;
-  
+
   /**
    * Debounce file change events (ms)
    */
@@ -42,15 +42,15 @@ export function monitorLog(
   options: MonitorOptions = {}
 ): () => void {
   const { useWatch = false, initialLines = 0 } = options;
-  
+
   let cleanup: () => void;
-  
+
   if (useWatch) {
     cleanup = monitorWithWatch(logPath, onEvent, options);
   } else {
     cleanup = monitorWithTail(logPath, onEvent, initialLines);
   }
-  
+
   return cleanup;
 }
 
@@ -63,39 +63,39 @@ function monitorWithTail(
   initialLines: number
 ): () => void {
   const args = ['-f'];
-  
+
   // Add initial lines to read
   if (initialLines > 0) {
     args.push('-n', String(initialLines));
   }
-  
+
   args.push(logPath);
-  
+
   const tail = spawn('tail', args, {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  
+
   const rl = readline.createInterface({
     input: tail.stdout as Readable,
-    crlfDelay: Infinity,
+    crlfDelay: Number.POSITIVE_INFINITY,
   });
-  
+
   rl.on('line', (line) => {
     const event = parseStreamEvent(line);
     if (event) {
       onEvent(event);
     }
   });
-  
+
   // Handle errors
   tail.stderr?.on('data', (data) => {
     console.error('Tail error:', data.toString());
   });
-  
+
   tail.on('error', (error) => {
     console.error('Failed to spawn tail:', error);
   });
-  
+
   // Cleanup function
   return () => {
     rl.close();
@@ -112,17 +112,17 @@ function monitorWithWatch(
   options: MonitorOptions
 ): () => void {
   const { debounceMs = 100 } = options;
-  
-  let lastSize = 0;
+
+  const lastSize = 0;
   let debounceTimer: Timer | null = null;
-  
+
   const watcher = watch(logPath, (eventType) => {
     if (eventType === 'change') {
       // Debounce rapid changes
       if (debounceTimer) {
         clearTimeout(debounceTimer);
       }
-      
+
       debounceTimer = setTimeout(() => {
         // Read new content from file
         // This is a simplified implementation
@@ -131,11 +131,11 @@ function monitorWithWatch(
       }, debounceMs);
     }
   });
-  
+
   watcher.on('error', (error) => {
     console.error('Watch error:', error);
   });
-  
+
   // Cleanup function
   return () => {
     if (debounceTimer) {
@@ -155,14 +155,14 @@ export function createParserStream(): Transform {
     transform(chunk, encoding, callback) {
       // Handle both string and buffer input
       const line = chunk.toString().trim();
-      
+
       if (line) {
         const event = parseStreamEvent(line);
         if (event) {
           this.push(event);
         }
       }
-      
+
       callback();
     },
   });
@@ -177,13 +177,15 @@ export function createChunkStream(): Transform {
     objectMode: true,
     transform(event: ClaudeEvent, encoding, callback) {
       // Import inside to avoid circular dependency
-      import('./parser.js').then(({ eventToChunk }) => {
-        const chunk = eventToChunk(event);
-        if (chunk) {
-          this.push(chunk);
-        }
-        callback();
-      }).catch(callback);
+      import('./parser.js')
+        .then(({ eventToChunk }) => {
+          const chunk = eventToChunk(event);
+          if (chunk) {
+            this.push(chunk);
+          }
+          callback();
+        })
+        .catch(callback);
     },
   });
 }
@@ -200,13 +202,13 @@ export function monitorMultipleLogs(
   onEvent: (logPath: string, event: ClaudeEvent) => void,
   options: MonitorOptions = {}
 ): () => void {
-  const cleanups = logPaths.map(logPath => 
+  const cleanups = logPaths.map((logPath) =>
     monitorLog(logPath, (event) => onEvent(logPath, event), options)
   );
-  
+
   // Return combined cleanup
   return () => {
-    cleanups.forEach(cleanup => cleanup());
+    cleanups.forEach((cleanup) => cleanup());
   };
 }
 
@@ -226,7 +228,7 @@ export function createAsyncMonitor(
   const events: ClaudeEvent[] = [];
   const waiters: Array<(value: IteratorResult<ClaudeEvent>) => void> = [];
   let done = false;
-  
+
   const cleanup = monitorLog(
     logPath,
     (event) => {
@@ -239,7 +241,7 @@ export function createAsyncMonitor(
     },
     options
   );
-  
+
   const asyncIterable: AsyncIterable<ClaudeEvent> = {
     [Symbol.asyncIterator]() {
       return {
@@ -247,18 +249,18 @@ export function createAsyncMonitor(
           if (done) {
             return { done: true, value: undefined };
           }
-          
+
           if (events.length > 0) {
             const event = events.shift()!;
             return { value: event, done: false };
           }
-          
+
           // Wait for next event
           return new Promise((resolve) => {
             waiters.push(resolve);
           });
         },
-        
+
         async return(): Promise<IteratorResult<ClaudeEvent>> {
           done = true;
           cleanup();
@@ -267,14 +269,14 @@ export function createAsyncMonitor(
       };
     },
   };
-  
+
   return {
     events: asyncIterable,
     cleanup: () => {
       done = true;
       cleanup();
       // Resolve any waiting promises
-      waiters.forEach(waiter => waiter({ done: true, value: undefined }));
+      waiters.forEach((waiter) => waiter({ done: true, value: undefined }));
     },
   };
 }

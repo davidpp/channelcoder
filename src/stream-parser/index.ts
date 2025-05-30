@@ -1,6 +1,6 @@
 /**
  * Stream Parser SDK for Claude's stream-json format
- * 
+ *
  * This module provides utilities for parsing and processing Claude's
  * newline-delimited JSON (NDJSON) output from log files and streams.
  */

@@ -98,11 +98,11 @@ export interface ErrorEvent {
 /**
  * Union of all Claude event types
  */
-export type ClaudeEvent = 
-  | SystemEvent 
-  | AssistantEvent 
-  | ResultEvent 
-  | ToolUseEvent 
+export type ClaudeEvent =
+  | SystemEvent
+  | AssistantEvent
+  | ResultEvent
+  | ToolUseEvent
   | ToolResultEvent
   | ErrorEvent;
 
@@ -135,27 +135,27 @@ export interface ParsedLog {
    * All events in the log file
    */
   events: ClaudeEvent[];
-  
+
   /**
    * Simplified chunks (for backward compatibility)
    */
   chunks: StreamChunk[];
-  
+
   /**
    * Session ID extracted from events
    */
   sessionId?: string;
-  
+
   /**
    * Concatenated assistant messages
    */
   content: string;
-  
+
   /**
    * Structured conversation history
    */
   messages: Message[];
-  
+
   /**
    * Metadata extracted from events
    */

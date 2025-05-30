@@ -7,7 +7,7 @@ console.log('Testing detached mode...');
 const result = await detached('TEST: What is 2+2? Just give the number.', {
   logFile: 'test-simple.log',
   stream: true,
-  outputFormat: 'stream-json'
+  outputFormat: 'stream-json',
 });
 
 console.log('Result:', result);

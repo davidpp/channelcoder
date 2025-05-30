@@ -2,8 +2,8 @@
  * Stream processing utilities for async iterables
  */
 
+import { eventToChunk, extractAssistantText, parseStreamEvent } from './parser.js';
 import type { ClaudeEvent, StreamChunk } from './types.js';
-import { parseStreamEvent, eventToChunk, extractAssistantText } from './parser.js';
 import { isAssistantEvent } from './types.js';
 
 /**
@@ -11,9 +11,7 @@ import { isAssistantEvent } from './types.js';
  * @param lines - Async iterable of JSON lines
  * @yields Parsed Claude events
  */
-export async function* parseEventStream(
-  lines: AsyncIterable<string>
-): AsyncIterable<ClaudeEvent> {
+export async function* parseEventStream(lines: AsyncIterable<string>): AsyncIterable<ClaudeEvent> {
   for await (const line of lines) {
     const event = parseStreamEvent(line);
     if (event) {
@@ -43,9 +41,7 @@ export async function* eventsToChunks(
  * @param events - Async iterable of Claude events
  * @yields Text content from assistant messages
  */
-export async function* extractContent(
-  events: AsyncIterable<ClaudeEvent>
-): AsyncIterable<string> {
+export async function* extractContent(events: AsyncIterable<ClaudeEvent>): AsyncIterable<string> {
   for await (const event of events) {
     if (isAssistantEvent(event)) {
       const text = extractAssistantText(event);
@@ -82,17 +78,17 @@ export async function* bufferUntilComplete(
   events: AsyncIterable<ClaudeEvent>
 ): AsyncIterable<ClaudeEvent[]> {
   let buffer: ClaudeEvent[] = [];
-  
+
   for await (const event of events) {
     buffer.push(event);
-    
+
     // Check if this is a terminal event
     if (event.type === 'result' || event.type === 'error') {
       yield buffer;
       buffer = [];
     }
   }
-  
+
   // Yield any remaining events
   if (buffer.length > 0) {
     yield buffer;
@@ -135,11 +131,11 @@ export async function* compose<T, R>(
   ...transforms: Array<(input: AsyncIterable<any>) => AsyncIterable<any>>
 ): AsyncIterable<R> {
   let result: AsyncIterable<any> = source;
-  
+
   for (const transform of transforms) {
     result = transform(result);
   }
-  
+
   yield* result as AsyncIterable<R>;
 }
 
@@ -162,10 +158,7 @@ export async function collect<T>(iterable: AsyncIterable<T>): Promise<T[]> {
  * @param count - Number of items to take
  * @yields Up to count items
  */
-export async function* take<T>(
-  iterable: AsyncIterable<T>,
-  count: number
-): AsyncIterable<T> {
+export async function* take<T>(iterable: AsyncIterable<T>, count: number): AsyncIterable<T> {
   let taken = 0;
   for await (const item of iterable) {
     if (taken >= count) break;

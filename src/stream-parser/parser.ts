@@ -2,18 +2,14 @@
  * Core parsing functions for Claude's stream-json format
  */
 
-import type {
-  ClaudeEvent,
-  StreamChunk,
-  AssistantEvent,
-} from './types.js';
+import type { AssistantEvent, ClaudeEvent, StreamChunk } from './types.js';
 
 import {
   isAssistantEvent,
-  isToolUseEvent,
-  isToolResultEvent,
   isErrorEvent,
   isResultEvent,
+  isToolResultEvent,
+  isToolUseEvent,
 } from './types.js';
 
 /**
@@ -29,12 +25,12 @@ export function parseStreamEvent(jsonLine: string): ClaudeEvent | null {
 
   try {
     const event = JSON.parse(jsonLine);
-    
+
     // Validate event has required type field
     if (!event || typeof event.type !== 'string') {
       return null;
     }
-    
+
     // Basic validation for known event types
     switch (event.type) {
       case 'system':
@@ -90,9 +86,8 @@ export function eventToChunk(event: ClaudeEvent): StreamChunk | null {
   } else if (isToolResultEvent(event)) {
     return {
       type: 'tool_result',
-      content: typeof event.output === 'string' 
-        ? event.output 
-        : JSON.stringify(event.output, null, 2),
+      content:
+        typeof event.output === 'string' ? event.output : JSON.stringify(event.output, null, 2),
       tool: event.tool,
       timestamp: event.timestamp || timestamp,
       metadata: {
@@ -140,10 +135,11 @@ export function extractAssistantText(event: AssistantEvent): string {
   }
 
   return event.message.content
-    .filter((c): c is { type: 'text'; text: string } => 
-      c && typeof c === 'object' && c.type === 'text' && typeof c.text === 'string'
+    .filter(
+      (c): c is { type: 'text'; text: string } =>
+        c && typeof c === 'object' && c.type === 'text' && typeof c.text === 'string'
     )
-    .map(c => c.text)
+    .map((c) => c.text)
     .join('');
 }
 
@@ -157,7 +153,7 @@ export function extractSessionId(event: ClaudeEvent): string | undefined {
   if ('session_id' in event && typeof event.session_id === 'string') {
     return event.session_id;
   }
-  
+
   return undefined;
 }
 
@@ -168,7 +164,7 @@ export function extractSessionId(event: ClaudeEvent): string | undefined {
  */
 export function parseStreamEvents(lines: string[]): ClaudeEvent[] {
   return lines
-    .map(line => parseStreamEvent(line))
+    .map((line) => parseStreamEvent(line))
     .filter((event): event is ClaudeEvent => event !== null);
 }
 

@@ -1,37 +1,40 @@
 import { describe, expect, test } from 'bun:test';
 import {
-  parseStreamEvent,
   eventToChunk,
   extractAssistantText,
   extractSessionId,
-  parseStreamEvents,
   isTerminalEvent,
+  parseStreamEvent,
+  parseStreamEvents,
 } from '../../src/stream-parser/parser.js';
-import type { ClaudeEvent, AssistantEvent } from '../../src/stream-parser/types.js';
+import type { AssistantEvent, ClaudeEvent } from '../../src/stream-parser/types.js';
 
 describe('parseStreamEvent', () => {
   test('parses valid system event', () => {
-    const line = '{"type":"system","subtype":"init","session_id":"abc-123","tools":["Read","Write"]}';
+    const line =
+      '{"type":"system","subtype":"init","session_id":"abc-123","tools":["Read","Write"]}';
     const event = parseStreamEvent(line);
-    
+
     expect(event).not.toBeNull();
     expect(event?.type).toBe('system');
     expect(event).toHaveProperty('session_id', 'abc-123');
   });
 
   test('parses valid assistant event', () => {
-    const line = '{"type":"assistant","message":{"id":"msg_123","type":"message","role":"assistant","model":"claude-3","content":[{"type":"text","text":"Hello"}]},"session_id":"abc-123"}';
+    const line =
+      '{"type":"assistant","message":{"id":"msg_123","type":"message","role":"assistant","model":"claude-3","content":[{"type":"text","text":"Hello"}]},"session_id":"abc-123"}';
     const event = parseStreamEvent(line);
-    
+
     expect(event).not.toBeNull();
     expect(event?.type).toBe('assistant');
     expect(event).toHaveProperty('session_id', 'abc-123');
   });
 
   test('parses valid result event', () => {
-    const line = '{"type":"result","subtype":"success","cost_usd":0.01,"total_cost":0.01,"duration_ms":1000,"num_turns":1,"result":"Done","is_error":false,"session_id":"abc-123"}';
+    const line =
+      '{"type":"result","subtype":"success","cost_usd":0.01,"total_cost":0.01,"duration_ms":1000,"num_turns":1,"result":"Done","is_error":false,"session_id":"abc-123"}';
     const event = parseStreamEvent(line);
-    
+
     expect(event).not.toBeNull();
     expect(event?.type).toBe('result');
     expect(event).toHaveProperty('cost_usd', 0.01);
@@ -57,7 +60,7 @@ describe('parseStreamEvent', () => {
   test('handles unknown event types gracefully', () => {
     const line = '{"type":"future_event","data":"something"}';
     const event = parseStreamEvent(line);
-    
+
     expect(event).not.toBeNull();
     expect(event?.type).toBe('future_event');
   });
@@ -79,7 +82,7 @@ describe('eventToChunk', () => {
     };
 
     const chunk = eventToChunk(event);
-    
+
     expect(chunk).not.toBeNull();
     expect(chunk?.type).toBe('content');
     expect(chunk?.content).toBe('Hello world');
@@ -95,7 +98,7 @@ describe('eventToChunk', () => {
     };
 
     const chunk = eventToChunk(event);
-    
+
     expect(chunk).not.toBeNull();
     expect(chunk?.type).toBe('tool_use');
     expect(chunk?.tool).toBe('calculator');
@@ -111,7 +114,7 @@ describe('eventToChunk', () => {
     };
 
     const chunk = eventToChunk(event);
-    
+
     expect(chunk).not.toBeNull();
     expect(chunk?.type).toBe('error');
     expect(chunk?.content).toBe('Something went wrong');
@@ -132,7 +135,7 @@ describe('eventToChunk', () => {
     };
 
     const chunk = eventToChunk(event);
-    
+
     expect(chunk).not.toBeNull();
     expect(chunk?.type).toBe('error');
     expect(chunk?.content).toBe('Task failed');
@@ -265,12 +268,28 @@ describe('extractSessionId', () => {
   test('extracts session ID from various event types', () => {
     const events: ClaudeEvent[] = [
       { type: 'system', subtype: 'init', session_id: 'session-1' },
-      { 
-        type: 'assistant', 
-        message: { id: 'msg', type: 'message', role: 'assistant', model: 'claude', content: [], stop_reason: null },
-        session_id: 'session-2' 
+      {
+        type: 'assistant',
+        message: {
+          id: 'msg',
+          type: 'message',
+          role: 'assistant',
+          model: 'claude',
+          content: [],
+          stop_reason: null,
+        },
+        session_id: 'session-2',
       },
-      { type: 'result', subtype: 'success', cost_usd: 0, total_cost: 0, duration_ms: 0, num_turns: 1, is_error: false, session_id: 'session-3' },
+      {
+        type: 'result',
+        subtype: 'success',
+        cost_usd: 0,
+        total_cost: 0,
+        duration_ms: 0,
+        num_turns: 1,
+        is_error: false,
+        session_id: 'session-3',
+      },
     ];
 
     expect(extractSessionId(events[0])).toBe('session-1');
@@ -298,7 +317,7 @@ describe('parseStreamEvents', () => {
     ];
 
     const events = parseStreamEvents(lines);
-    
+
     expect(events).toHaveLength(3);
     expect(events[0].type).toBe('system');
     expect(events[1].type).toBe('assistant');
@@ -315,7 +334,7 @@ describe('parseStreamEvents', () => {
     ];
 
     const events = parseStreamEvents(lines);
-    
+
     expect(events).toHaveLength(2);
     expect(events[0].type).toBe('system');
     expect(events[1].type).toBe('assistant');
@@ -353,7 +372,14 @@ describe('isTerminalEvent', () => {
 
     const assistantEvent: ClaudeEvent = {
       type: 'assistant',
-      message: { id: 'msg', type: 'message', role: 'assistant', model: 'claude', content: [], stop_reason: null },
+      message: {
+        id: 'msg',
+        type: 'message',
+        role: 'assistant',
+        model: 'claude',
+        content: [],
+        stop_reason: null,
+      },
       session_id: 'abc',
     };
 

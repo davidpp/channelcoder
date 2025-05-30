@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
 import { resolveSystemPrompt } from './loader.js';
+import { eventToChunk, extractSessionId, parseStreamEvent } from './stream-parser/index.js';
 import type { CCOptions, CCResult, PromptConfig, StreamChunk } from './types.js';
 
 /**
@@ -193,11 +194,14 @@ export class CCProcess {
           try {
             const lines = stdout.split('\n');
             for (const line of lines) {
-              if (line.trim() && line.includes('session_id')) {
-                const data = JSON.parse(line);
-                if (data.session_id) {
-                  result.sessionId = data.session_id;
-                  break;
+              if (line.trim()) {
+                const event = parseStreamEvent(line);
+                if (event) {
+                  const sessionId = extractSessionId(event);
+                  if (sessionId) {
+                    result.sessionId = sessionId;
+                    break;
+                  }
                 }
               }
             }
@@ -220,11 +224,14 @@ export class CCProcess {
           // stderr might contain multiple JSON lines in stream-json format
           const lines = stderr.split('\n');
           for (const line of lines) {
-            if (line.trim() && line.includes('session_id')) {
-              const data = JSON.parse(line);
-              if (data.session_id) {
-                result.sessionId = data.session_id;
-                break;
+            if (line.trim()) {
+              const event = parseStreamEvent(line);
+              if (event) {
+                const sessionId = extractSessionId(event);
+                if (sessionId) {
+                  result.sessionId = sessionId;
+                  break;
+                }
               }
             }
           }
@@ -321,10 +328,13 @@ export class CCProcess {
 
             for (const line of lines) {
               if (line.trim()) {
-                const parsed = this.parseStreamLine(line);
-                // Skip empty content chunks in parse mode
-                if (parsed.content || parsed.type === 'error') {
-                  chunks.push(parsed);
+                const event = parseStreamEvent(line);
+                if (event) {
+                  const chunk = eventToChunk(event);
+                  // Skip empty content chunks in parse mode
+                  if (chunk && (chunk.content || chunk.type === 'error')) {
+                    chunks.push(chunk);
+                  }
                 }
               }
             }
@@ -334,9 +344,12 @@ export class CCProcess {
         proc.stdout.on('end', () => {
           if (shouldParse && buffer.trim()) {
             // Parse mode - handle remaining buffer
-            const parsed = this.parseStreamLine(buffer);
-            if (parsed.content || parsed.type === 'error') {
-              chunks.push(parsed);
+            const event = parseStreamEvent(buffer);
+            if (event) {
+              const chunk = eventToChunk(event);
+              if (chunk && (chunk.content || chunk.type === 'error')) {
+                chunks.push(chunk);
+              }
             }
           }
           // Raw mode doesn't need end handling since we stream everything
@@ -498,80 +511,6 @@ export class CCProcess {
       return JSON.parse(output);
     } catch (_e) {
       return null;
-    }
-  }
-
-  /**
-   * Parse a stream line into a chunk
-   */
-  private parseStreamLine(line: string): StreamChunk {
-    try {
-      const data = JSON.parse(line);
-
-      // Handle different event types from Claude's stream-json format
-      if (data.type === 'assistant' && data.message?.content) {
-        // Extract text from assistant messages
-        const content = data.message.content;
-        if (Array.isArray(content)) {
-          const textContent = content.find(
-            (c: unknown) => (c as { type?: string }).type === 'text'
-          );
-          if ((textContent as { text?: string })?.text) {
-            return {
-              type: 'content',
-              content: (textContent as { text: string }).text,
-              timestamp: Date.now(),
-            };
-          }
-        }
-      } else if (data.type === 'content') {
-        return {
-          type: 'content',
-          content: data.text || '',
-          timestamp: Date.now(),
-        };
-      } else if (data.type === 'tool_use') {
-        return {
-          type: 'tool_use',
-          content: JSON.stringify(data),
-          timestamp: Date.now(),
-        };
-      } else if (data.type === 'tool_result') {
-        return {
-          type: 'tool_result',
-          content: JSON.stringify(data),
-          timestamp: Date.now(),
-        };
-      } else if (data.error) {
-        return {
-          type: 'error',
-          content: data.error,
-          timestamp: Date.now(),
-        };
-      }
-
-      // Ignore system and result messages in streaming
-      if (data.type === 'system' || data.type === 'result') {
-        return {
-          type: 'content',
-          content: '',
-          timestamp: Date.now(),
-        };
-      }
-
-      // Default: treat as content
-      return {
-        type: 'content',
-        content: line,
-        timestamp: Date.now(),
-      };
-    } catch (_e) {
-      // If not JSON, treat as plain content
-      return {
-        type: 'content',
-        content: line,
-        timestamp: Date.now(),
-      };
     }
   }
 }

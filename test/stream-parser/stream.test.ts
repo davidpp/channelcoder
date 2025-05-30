@@ -1,15 +1,15 @@
 import { describe, expect, test } from 'bun:test';
 import {
-  parseEventStream,
+  bufferUntilComplete,
+  collect,
+  compose,
   eventsToChunks,
   extractContent,
   filterEventType,
-  bufferUntilComplete,
-  parseEventStreamSafe,
-  compose,
-  collect,
-  take,
   fromArray,
+  parseEventStream,
+  parseEventStreamSafe,
+  take,
 } from '../../src/stream-parser/stream.js';
 import type { ClaudeEvent } from '../../src/stream-parser/types.js';
 
@@ -36,7 +36,7 @@ describe('parseEventStream', () => {
     ];
 
     const events = await collect(parseEventStream(asyncLines(lines)));
-    
+
     expect(events).toHaveLength(3);
     expect(events[0].type).toBe('system');
     expect(events[1].type).toBe('assistant');
@@ -52,7 +52,7 @@ describe('parseEventStream', () => {
     ];
 
     const events = await collect(parseEventStream(asyncLines(lines)));
-    
+
     expect(events).toHaveLength(2);
     expect(events[0].type).toBe('system');
     expect(events[1].type).toBe('assistant');
@@ -88,7 +88,7 @@ describe('eventsToChunks', () => {
     ];
 
     const chunks = await collect(eventsToChunks(asyncEvents(events)));
-    
+
     // Only assistant event converts to chunk
     expect(chunks).toHaveLength(1);
     expect(chunks[0].type).toBe('content');
@@ -128,7 +128,7 @@ describe('extractContent', () => {
     ];
 
     const content = await collect(extractContent(asyncEvents(events)));
-    
+
     expect(content).toHaveLength(2);
     expect(content[0]).toBe('First message');
     expect(content[1]).toBe('Second message');
@@ -168,9 +168,9 @@ describe('filterEventType', () => {
     ];
 
     const assistantEvents = await collect(filterEventType(asyncEvents(events), 'assistant'));
-    
+
     expect(assistantEvents).toHaveLength(2);
-    expect(assistantEvents.every(e => e.type === 'assistant')).toBe(true);
+    expect(assistantEvents.every((e) => e.type === 'assistant')).toBe(true);
   });
 });
 
@@ -207,7 +207,7 @@ describe('bufferUntilComplete', () => {
     ];
 
     const conversations = await collect(bufferUntilComplete(asyncEvents(events)));
-    
+
     expect(conversations).toHaveLength(2);
     expect(conversations[0]).toHaveLength(3);
     expect(conversations[1]).toHaveLength(2);
@@ -233,7 +233,7 @@ describe('bufferUntilComplete', () => {
     ];
 
     const conversations = await collect(bufferUntilComplete(asyncEvents(events)));
-    
+
     expect(conversations).toHaveLength(1);
     expect(conversations[0]).toHaveLength(2);
   });
@@ -253,7 +253,7 @@ describe('parseEventStreamSafe', () => {
         errors.push({ error, line });
       })
     );
-    
+
     expect(events).toHaveLength(2);
     expect(errors).toHaveLength(0); // parseStreamEvent returns null, doesn't throw
   });
@@ -267,14 +267,8 @@ describe('compose', () => {
       '{"type":"result","subtype":"success","cost_usd":0.01,"total_cost":0.01,"duration_ms":1000,"num_turns":1,"is_error":false,"session_id":"abc"}',
     ];
 
-    const content = await collect(
-      compose(
-        asyncLines(lines),
-        parseEventStream,
-        extractContent
-      )
-    );
-    
+    const content = await collect(compose(asyncLines(lines), parseEventStream, extractContent));
+
     expect(content).toHaveLength(1);
     expect(content[0]).toBe('Hello');
   });
@@ -284,14 +278,14 @@ describe('take', () => {
   test('takes only specified number of items', async () => {
     const items = [1, 2, 3, 4, 5];
     const taken = await collect(take(fromArray(items), 3));
-    
+
     expect(taken).toEqual([1, 2, 3]);
   });
 
   test('handles taking more than available', async () => {
     const items = [1, 2];
     const taken = await collect(take(fromArray(items), 5));
-    
+
     expect(taken).toEqual([1, 2]);
   });
 });
