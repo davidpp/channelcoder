@@ -11,6 +11,12 @@ export interface CCResult<T = unknown> {
   stderr?: string;
   warnings?: string[];
   sessionId?: string; // Session ID from Claude CLI response
+  
+  // Detached process information
+  pid?: number;
+  detached?: boolean;
+  logFile?: string;
+  streaming?: boolean;
 }
 
 /**

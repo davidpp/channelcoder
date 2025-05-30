@@ -48,6 +48,7 @@ export interface ClaudeOptions {
   // Process control
   detached?: boolean; // Run in detached mode (background)
   logFile?: string; // Log file path for detached mode output
+  stream?: boolean; // Enable streaming output in detached mode
 }
 
 // Internal: Detect if input is a file path
@@ -179,6 +180,17 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
 
   // Handle detached mode
   if (options.detached) {
+    // Enable streaming output format if stream option is set
+    if (options.stream) {
+      mergedOptions.outputFormat = 'stream-json';
+      if (!options.logFile) {
+        return {
+          success: false,
+          error: 'logFile is required when using detached streaming mode',
+        };
+      }
+    }
+
     const args = await process.buildCommand(mergedOptions);
 
     // Set up stdio based on logFile
@@ -216,6 +228,7 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
         pid: child.pid,
         detached: true,
         logFile: options.logFile,
+        streaming: options.stream || false,
       },
     };
   }
@@ -425,6 +438,13 @@ export async function run(promptOrFile: string, options: ClaudeOptions = {}): Pr
  * // Run with logging
  * await detached('long-task.md', {
  *   logFile: 'output.log',
+ *   data: { taskId: '123' }
+ * });
+ *
+ * // Run with real-time streaming to log file
+ * await detached('long-task.md', {
+ *   logFile: 'output.log',
+ *   stream: true,
  *   data: { taskId: '123' }
  * });
  */

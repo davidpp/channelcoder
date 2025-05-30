@@ -1,6 +1,7 @@
 import type { ClaudeFunction, ClaudeOptions } from './functions.js';
 import {
   claude as claudeBase,
+  detached as detachedBase,
   interactive as interactiveBase,
   run as runBase,
   stream as streamBase,
@@ -54,6 +55,7 @@ export interface SessionInfo {
 export interface SessionOptions {
   name?: string;
   storage?: SessionStorage;
+  autoSave?: boolean; // Enable real-time session file updates (default: true)
 }
 
 /**
@@ -74,6 +76,7 @@ export interface Session {
   stream: typeof streamBase;
   interactive: typeof interactiveBase;
   run: typeof runBase;
+  detached: typeof detachedBase;
 
   // Essential session methods
   id(): string | undefined; // Get current session ID
@@ -88,9 +91,11 @@ export interface Session {
 export class SessionManager {
   private state: SessionState;
   private storage?: SessionStorage;
+  private autoSave: boolean;
 
   constructor(options?: SessionOptions) {
     this.storage = options?.storage;
+    this.autoSave = options?.autoSave ?? true; // Default to true
     this.state = {
       sessionChain: [],
       messages: [],
@@ -141,6 +146,35 @@ export class SessionManager {
   }
 
   /**
+   * Update the last message content (for streaming updates)
+   */
+  private updateLastMessage(role: 'user' | 'assistant', content: string, sessionId: string) {
+    const lastMessage = this.state.messages[this.state.messages.length - 1];
+    if (lastMessage && lastMessage.role === role && lastMessage.sessionId === sessionId) {
+      lastMessage.content = content;
+      lastMessage.timestamp = new Date();
+    } else {
+      // No matching last message, add new one
+      this.addMessage(role, content, sessionId);
+    }
+    this.state.metadata.lastActive = new Date();
+  }
+
+  /**
+   * Save session state (internal method with error handling)
+   */
+  private async saveState(): Promise<void> {
+    if (this.storage && this.autoSave) {
+      try {
+        await this.storage.save(this.state, this.state.metadata.name);
+      } catch (error) {
+        // Silently ignore save errors to avoid disrupting the main flow
+        console.warn('Session auto-save failed:', error);
+      }
+    }
+  }
+
+  /**
    * Execute a function with session context
    */
   async executeWithSession<T>(
@@ -172,6 +206,9 @@ export class SessionManager {
         if (typeof result.data === 'string') {
           this.addMessage('assistant', result.data, sessionId);
         }
+
+        // Auto-save session state after updates
+        await this.saveState();
       }
     }
 
@@ -188,21 +225,26 @@ export class SessionManager {
     // Track user message before streaming
     const tempSessionId = resumeId || 'pending';
     this.addMessage('user', prompt, tempSessionId);
+    
+    // Auto-save user message
+    await this.saveState();
 
-    // Stream with session context
-    const chunks: string[] = [];
+    // Stream with session context and real-time updates
+    let assistantContent = '';
     for await (const chunk of streamBase(prompt, {
       ...options,
       resume: resumeId || options?.resume,
     })) {
-      chunks.push(chunk.content);
+      // Accumulate assistant content
+      assistantContent += chunk.content;
+      
+      // Update session with partial content in real-time
+      this.updateLastMessage('assistant', assistantContent, tempSessionId);
+      
+      // Auto-save session state with each chunk
+      await this.saveState();
+      
       yield chunk;
-    }
-
-    // After streaming, try to extract session ID and update message
-    const fullContent = chunks.join('');
-    if (fullContent) {
-      this.addMessage('assistant', fullContent, tempSessionId);
     }
   }
 
@@ -306,6 +348,23 @@ export class SessionManager {
       // Wrapped run function
       run: async (prompt: string, options?: ClaudeOptions) => {
         return this.executeWithSession(runBase, prompt, options);
+      },
+
+      // Wrapped detached function
+      detached: async (prompt: string, options?: ClaudeOptions) => {
+        const resumeId = this.state.sessionChain[this.state.sessionChain.length - 1];
+        const result = await detachedBase(prompt, {
+          ...options,
+          resume: resumeId || options?.resume,
+        });
+
+        // Track the detached session start
+        if (result.success) {
+          this.addMessage('user', prompt, resumeId || 'detached');
+          await this.saveState();
+        }
+
+        return result;
       },
 
       // Session methods

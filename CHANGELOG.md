@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Detached Streaming**: Enhanced detached mode with real-time streaming support via `stream: true` option
+- **Session Auto-Save**: Real-time session file updates during streaming conversations with `autoSave: true`
+- **Real-time Monitoring**: Ability to monitor both Claude output and session state in real-time for background processes
+- **Unix Composability**: Full support for monitoring detached processes with standard Unix tools (`tail -f`, `jq`, `watch`)
+
+### Enhanced
+- **Detached Mode**: Now supports `--output-format stream-json` for real-time log file updates
+- **Session Management**: Session files are updated incrementally during streaming for better monitoring
+- **Error Handling**: Better validation and error messages for detached streaming configuration
+
 ## [2.1.1] - 2025-01-29
 
 ### Fixed
