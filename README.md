@@ -497,6 +497,71 @@ await s.detached('Long-running analysis', {
 // watch -n 1 cat ~/.channelcoder/sessions/my-session.json  # Session state
 ```
 
+### Stream Parser SDK
+
+ChannelCoder includes a powerful Stream Parser SDK for parsing Claude's stream-json output from detached sessions and log files:
+
+```typescript
+import { parseLogFile, monitorLog, streamParser } from 'channelcoder';
+
+// Parse a complete log file
+const parsed = await parseLogFile('session.log');
+console.log(parsed.content);        // All assistant messages
+console.log(parsed.totalCost);      // Total cost
+console.log(parsed.events.length);  // Number of events
+
+// Monitor a log file in real-time
+const cleanup = monitorLog('active.log', (event) => {
+  if (streamParser.isAssistantEvent(event)) {
+    console.log('Claude:', streamParser.extractAssistantText(event));
+  } else if (streamParser.isToolUseEvent(event)) {
+    console.log('Tool used:', event.tool);
+  } else if (streamParser.isResultEvent(event)) {
+    console.log('Completed! Cost:', event.cost_usd);
+  }
+});
+
+// Clean up when done
+cleanup();
+
+// Low-level parsing
+import { parseStreamEvent, eventToChunk } from 'channelcoder/streamParser';
+
+const line = '{"type":"assistant","message":{...}}';
+const event = parseStreamEvent(line);
+const chunk = eventToChunk(event);
+```
+
+**Type Guards for Event Handling:**
+
+```typescript
+import { 
+  isSystemEvent, 
+  isAssistantEvent, 
+  isResultEvent,
+  isToolUseEvent,
+  isErrorEvent 
+} from 'channelcoder';
+
+// Type-safe event processing
+function processEvent(event: ClaudeEvent) {
+  if (isAssistantEvent(event)) {
+    const text = streamParser.extractAssistantText(event);
+    console.log('Assistant:', text);
+  } else if (isToolUseEvent(event)) {
+    console.log('Tool:', event.tool, event.input);
+  } else if (isResultEvent(event)) {
+    if (event.subtype === 'error') {
+      console.error('Failed:', event.error);
+    } else {
+      console.log('Success! Cost: $', event.cost_usd);
+    }
+  }
+}
+```
+
+See `examples/task-monitor-tui.ts` for a complete real-time monitoring TUI built with the Stream Parser SDK.
+
 ### Session Management
 
 ChannelCoder provides built-in session management for maintaining conversation context:
@@ -662,7 +727,8 @@ Check out the `/examples` directory for:
 - `basic-usage.ts` - Simple examples to get started
 - `file-based-usage.ts` - Using file-based prompts
 - `launch-modes.ts` - Different execution modes
-- `detached-streaming.ts` - **NEW** Background execution with real-time monitoring
+- `detached-streaming.ts` - Background execution with real-time monitoring
+- `task-monitor-tui.ts` - **NEW** Real-time TUI using Stream Parser SDK
 - `demo-features.ts` - Feature showcase (no execution)
 - `release.ts` - Real-world release automation
 
