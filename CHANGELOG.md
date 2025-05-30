@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2025-01-30
+
+### Added
+- **Detached Streaming Mode**: Run long-running Claude sessions in the background while monitoring their progress in real-time
+- **Real-time Session Monitoring**: Access session state, messages, and outputs while a session is running
+- **Enhanced Session API**: New methods for checking session status, retrieving partial results, and managing detached sessions
+
+### Fixed
+- **Session Detached Tracking**: Improved reliability of detached session state tracking and recovery
+
 ## [Unreleased]
 
 ### Added
