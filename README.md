@@ -106,7 +106,7 @@ await claude('prompts/review.md', {
 Different modes for different needs:
 
 ```typescript
-import { claude, interactive, stream, run } from 'channelcoder';
+import { claude, interactive, stream, run, detached } from 'channelcoder';
 
 // Run mode (default) - Get complete results programmatically
 const result = await claude('Generate tests');
@@ -121,8 +121,18 @@ for await (const chunk of stream('Write documentation')) {
 await interactive('Debug this error');
 // ⚠️ Code after interactive() never executes!
 
-// Explicit run mode
-const result2 = await run('Analyze code', { tools: ['Read'] });
+// Detached mode - Background execution
+const result3 = await detached('Long analysis task', {
+  logFile: 'analysis.log'
+});
+console.log('Started background process:', result3.data?.pid);
+
+// Detached streaming - Real-time background monitoring
+const result4 = await detached('Generate comprehensive report', {
+  logFile: 'report.log',
+  stream: true  // Enables real-time JSON chunks in log file
+});
+// Monitor with: tail -f report.log | jq -r '.content'
 ```
 
 ## CLI Reference
@@ -382,6 +392,11 @@ const result = await claude('Your prompt', {
   mode: 'run', // 'run' | 'stream' | 'interactive'
   includeEvents: true,
   
+  // Background execution
+  detached: true,        // Run in background
+  logFile: 'output.log', // Log file for detached mode
+  stream: true,          // Enable real-time streaming in detached mode
+  
   // Other
   verbose: true,
   outputFormat: 'json',
@@ -438,15 +453,59 @@ await interactive('Help me debug this issue');
 - Exit codes go directly to the shell
 - Perfect for long Claude sessions without memory overhead
 
+### Background Execution & Real-time Monitoring
+
+ChannelCoder supports background execution with real-time monitoring capabilities:
+
+```typescript
+import { detached, session } from 'channelcoder';
+
+// Basic background execution
+const result = await detached('Analyze large codebase', {
+  logFile: 'analysis.log'
+});
+console.log('Background process started with PID:', result.data?.pid);
+
+// Real-time streaming to log file
+const result2 = await detached('Generate comprehensive report', {
+  logFile: 'report.log',
+  stream: true  // Enables real-time JSON streaming
+});
+
+// Monitor in real-time with Unix tools
+// tail -f report.log | jq -r '.content'          # See content
+// tail -f report.log | jq -r '.type'             # See chunk types
+// watch -n 1 "wc -l report.log"                  # Monitor progress
+```
+
+**Session Background Execution:**
+
+```typescript
+// Session with real-time file updates
+const s = session({ 
+  autoSave: true  // Session file updates in real-time
+});
+
+// Background execution with session context
+await s.detached('Long-running analysis', {
+  logFile: 'session-output.log',
+  stream: true
+});
+
+// Monitor both Claude output AND session state
+// tail -f session-output.log | jq -r '.content'   # Claude output
+// watch -n 1 cat ~/.channelcoder/sessions/my-session.json  # Session state
+```
+
 ### Session Management
 
-ChannelCoder now provides built-in session management for maintaining conversation context:
+ChannelCoder provides built-in session management for maintaining conversation context:
 
 ```typescript
 import { session } from 'channelcoder';
 
-// Create a new session
-const s = session();
+// Create a new session with auto-save
+const s = session({ autoSave: true });
 
 // Use like normal, but with automatic context tracking
 await s.claude('What is TypeScript?');
@@ -576,7 +635,20 @@ channelcoder -p "..." -s "Be concise"
 channelcoder -p "..." -s "prompts/systems/expert.md"
 ```
 
-### 4. JSON Output
+### 4. Background Monitoring
+
+Perfect for long-running tasks:
+```bash
+# Start background streaming process
+channelcoder analysis.md --detached --stream --log analysis.log
+
+# Monitor real-time progress (Unix composable)
+tail -f analysis.log | jq -r '.content'           # Content only
+tail -f analysis.log | jq -r 'select(.type=="tool_use").tool'  # Tool usage
+watch -n 1 "grep -c content analysis.log"         # Progress counter
+```
+
+### 5. JSON Output
 
 Perfect for automation:
 ```bash
@@ -590,6 +662,7 @@ Check out the `/examples` directory for:
 - `basic-usage.ts` - Simple examples to get started
 - `file-based-usage.ts` - Using file-based prompts
 - `launch-modes.ts` - Different execution modes
+- `detached-streaming.ts` - **NEW** Background execution with real-time monitoring
 - `demo-features.ts` - Feature showcase (no execution)
 - `release.ts` - Real-world release automation
 

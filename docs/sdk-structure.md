@@ -72,6 +72,12 @@ Each mode generates different Claude CLI commands:
    - Command: `exec echo "prompt" | exec claude [options]`
    - Never returns - process is replaced
 
+4. **`detached` mode**: Background execution with optional streaming
+   - Runs Claude in detached background process
+   - Command: `claude --print [options] &` (with stdio redirection)
+   - Returns: `CCResult` with process metadata (PID, logFile, etc.)
+   - With `stream: true`: Uses `--output-format stream-json` for real-time log updates
+
 #### Resume/Continue Behavior
 
 All modes support session continuation:

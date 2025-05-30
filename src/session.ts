@@ -360,7 +360,16 @@ export class SessionManager {
 
         // Track the detached session start
         if (result.success) {
-          this.addMessage('user', prompt, resumeId || 'detached');
+          // Use existing session ID or generate a temporary one for tracking
+          const sessionId = resumeId || this.state.currentSessionId || `detached-${Date.now()}`;
+          this.addMessage('user', prompt, sessionId);
+          
+          // Update session chain if we don't have a session ID yet
+          if (!this.state.currentSessionId) {
+            this.state.sessionChain.push(sessionId);
+            this.state.currentSessionId = sessionId;
+          }
+          
           await this.saveState();
         }
 

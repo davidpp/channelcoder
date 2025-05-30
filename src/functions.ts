@@ -174,6 +174,13 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
         args: args.slice(1),
         fullCommand,
         prompt, // Include raw prompt for reference
+        // Include detached/streaming info for dry-run testing
+        ...(options.detached && {
+          pid: 12345, // Mock PID for dry-run
+          detached: true,
+          logFile: options.logFile,
+          streaming: options.stream || false,
+        }),
       },
     };
   }
