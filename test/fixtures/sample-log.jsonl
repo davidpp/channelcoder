@@ -1,0 +1,6 @@
+{"type":"system","subtype":"init","session_id":"test-session-123","tools":["Read","Write","Bash"],"mcp_servers":[{"name":"test-server","status":"connected"}]}
+{"type":"assistant","message":{"id":"msg_001","type":"message","role":"assistant","model":"claude-3-opus","content":[{"type":"text","text":"Hello! I'll help you with that task."}],"stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":8}},"session_id":"test-session-123"}
+{"type":"tool_use","tool":"Read","input":{"file_path":"test.txt"},"session_id":"test-session-123"}
+{"type":"tool_result","tool":"Read","output":"File contents here","session_id":"test-session-123"}
+{"type":"assistant","message":{"id":"msg_002","type":"message","role":"assistant","model":"claude-3-opus","content":[{"type":"text","text":"I've read the file. The result is 42."}],"stop_reason":"end_turn"},"session_id":"test-session-123"}
+{"type":"result","subtype":"success","cost_usd":0.0015,"total_cost":0.0015,"duration_ms":2500,"duration_api_ms":2000,"num_turns":2,"result":"Task completed successfully","session_id":"test-session-123"}
