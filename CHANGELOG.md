@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2025-01-30
+
+### Added
+- **Stream Parser SDK**: Parse and process Claude's JSONL log files with real-time streaming support
+- **Task Monitoring**: Monitor task progress and status with the new `TaskMonitor` class
+- **Log File Parsing**: Read and parse both active and completed Claude session logs
+- **TUI Example**: Interactive terminal UI for monitoring Claude tasks in real-time
+- **Detached Session Support**: Parse logs from detached Claude sessions for background monitoring
+
+### Changed
+- **Internal Architecture**: Refactored process handling to use the new Stream Parser SDK internally
+
 ## [2.2.0] - 2025-01-30
 
 ### Added
