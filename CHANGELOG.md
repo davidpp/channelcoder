@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.1] - 2025-05-31
+
+### Fixed
+- **CLI Resume Flag**: The `-r` (resume) flag now properly processes sessions instead of showing help text
+
 ## [2.3.0] - 2025-01-30
 
 ### Added
