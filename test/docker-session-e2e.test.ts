@@ -31,11 +31,11 @@ describe('Docker Session E2E Tests', () => {
     const s = session({ storage });
 
     // First interaction with Docker - check Docker args are added
-    const result1 = await s.claude('What is Docker?', { 
+    const result1 = await s.claude('What is Docker?', {
       docker: { image: 'test-claude' },
-      dryRun: true 
+      dryRun: true,
     });
-    
+
     expect(result1.success).toBe(true);
     expect(result1.data.command).toBe('docker');
     expect(result1.data.args).toContain('run');
@@ -85,50 +85,17 @@ describe('Docker Session E2E Tests', () => {
     const s2 = await session.load('container-learning', storage);
 
     // Continue conversation with Docker
-    const result = await s2.claude('How does Docker networking work?', { 
+    const result = await s2.claude('How does Docker networking work?', {
       docker: { image: 'claude-net' },
-      dryRun: true 
+      dryRun: true,
     });
-    
+
     expect(result.success).toBe(true);
     // Should have both Docker args and session resume
     expect(result.data.command).toBe('docker');
     expect(result.data.args).toContain('claude-net');
     expect(result.data.args).toContain('--resume');
     expect(result.data.args).toContain('docker-session-2');
-  });
-
-  test('Docker with authentication options', async () => {
-    const s = session({ storage });
-
-    // Test without mounting host auth
-    const result1 = await s.claude('Secure task', {
-      docker: {
-        image: 'secure-claude',
-        auth: { mountHostAuth: false }
-      },
-      dryRun: true
-    });
-
-    expect(result1.success).toBe(true);
-    const command = result1.data.fullCommand;
-    expect(command).toContain('docker run');
-    expect(command).not.toContain('.claude.json'); // Should not mount auth
-
-    // Test with custom auth path
-    const result2 = await s.claude('Custom auth task', {
-      docker: {
-        image: 'custom-auth-claude',
-        auth: { 
-          mountHostAuth: true,
-          customAuthPath: '/custom/.claude.json'
-        }
-      },
-      dryRun: true
-    });
-
-    expect(result2.success).toBe(true);
-    // Note: actual mount would only happen if file exists
   });
 
   test('Docker with mounts and environment', async () => {
@@ -140,20 +107,20 @@ describe('Docker Session E2E Tests', () => {
         mounts: ['./input:/data/input:ro', './output:/data/output:rw'],
         env: {
           DATA_DIR: '/data',
-          PROCESS_MODE: 'batch'
-        }
+          PROCESS_MODE: 'batch',
+        },
       },
-      dryRun: true
+      dryRun: true,
     });
 
     expect(result.success).toBe(true);
     const args = result.data.args;
-    
+
     // Check mounts are included
     expect(args).toContain('-v');
     expect(args).toContain('./input:/data/input:ro');
     expect(args).toContain('./output:/data/output:rw');
-    
+
     // Check environment variables
     expect(args).toContain('-e');
     expect(args).toContain('DATA_DIR=/data');
@@ -163,11 +130,14 @@ describe('Docker Session E2E Tests', () => {
   test('Docker auto-detection with session', async () => {
     // Create a Dockerfile in test directory
     const dockerfilePath = join(testDir, 'Dockerfile');
-    await fs.writeFile(dockerfilePath, `
+    await fs.writeFile(
+      dockerfilePath,
+      `
 FROM node:20-slim
 RUN npm install -g @anthropic-ai/claude-code
 WORKDIR /workspace
-`);
+`
+    );
 
     // Change to test directory for auto-detection
     const originalCwd = process.cwd();
@@ -179,7 +149,7 @@ WORKDIR /workspace
       // Use docker: true for auto-detection
       const result = await s.claude('Build something', {
         docker: true,
-        dryRun: true
+        dryRun: true,
       });
 
       expect(result.success).toBe(true);
@@ -227,15 +197,15 @@ Help me containerize this service.`
 
     // Stream mode with Docker should maintain session context
     const streamResult = s.stream('Stream in Docker', {
-      docker: { image: 'claude-stream' }
+      docker: { image: 'claude-stream' },
     });
-    
+
     expect(streamResult[Symbol.asyncIterator]).toBeDefined();
 
     // With options
-    const streamWithOptions = s.stream('Stream with parse', { 
+    const streamWithOptions = s.stream('Stream with parse', {
       docker: { image: 'claude-stream' },
-      parse: true 
+      parse: true,
     });
     expect(streamWithOptions[Symbol.asyncIterator]).toBeDefined();
   });
@@ -248,7 +218,7 @@ Help me containerize this service.`
     const result = await s.claude('Interactive Docker task', {
       docker: { image: 'claude-interactive' },
       mode: 'interactive',
-      dryRun: true
+      dryRun: true,
     });
 
     expect(result.success).toBe(true);
@@ -263,20 +233,20 @@ Help me containerize this service.`
     const prodSession = session({ name: 'prod-env', storage });
 
     // Use different Docker configurations
-    const devResult = await devSession.claude('Setup dev environment', { 
-      docker: { 
+    const devResult = await devSession.claude('Setup dev environment', {
+      docker: {
         image: 'claude-dev',
-        env: { NODE_ENV: 'development' }
+        env: { NODE_ENV: 'development' },
       },
-      dryRun: true 
+      dryRun: true,
     });
-    
-    const prodResult = await prodSession.claude('Deploy to production', { 
-      docker: { 
+
+    const prodResult = await prodSession.claude('Deploy to production', {
+      docker: {
         image: 'claude-prod',
-        env: { NODE_ENV: 'production' }
+        env: { NODE_ENV: 'production' },
       },
-      dryRun: true 
+      dryRun: true,
     });
 
     expect(devResult.success).toBe(true);
@@ -285,7 +255,7 @@ Help me containerize this service.`
     // They should use different images
     expect(devResult.data.args).toContain('claude-dev');
     expect(prodResult.data.args).toContain('claude-prod');
-    
+
     // And different environments
     expect(devResult.data.args).toContain('NODE_ENV=development');
     expect(prodResult.data.args).toContain('NODE_ENV=production');
@@ -297,7 +267,7 @@ Help me containerize this service.`
     // Test with missing required options (this would fail without an image in real usage)
     const result = await s.claude('Test error handling', {
       docker: { auto: false }, // Disable auto-detection, no image specified
-      dryRun: true
+      dryRun: true,
     });
 
     // In dry-run mode with invalid config, it should fail

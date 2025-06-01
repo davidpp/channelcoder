@@ -1,13 +1,13 @@
 import { spawn } from 'child_process';
+import { DockerManager } from './docker.js';
 import { resolveSystemPrompt } from './loader.js';
 import { eventToChunk, extractSessionId, parseStreamEvent } from './stream-parser/index.js';
-import { DockerManager } from './docker.js';
 import type {
   CCOptions,
   CCResult,
   PromptConfig,
-  StreamChunk,
   ResolvedDockerConfig,
+  StreamChunk,
 } from './types.js';
 
 /**
@@ -549,7 +549,10 @@ export class CCProcess {
 
     try {
       // Resolve Docker configuration
-      const dockerConfig = await this.dockerManager.resolveDockerConfig(options.docker!);
+      if (!options.docker) {
+        throw new Error('Docker option is required but not provided');
+      }
+      const dockerConfig = await this.dockerManager.resolveDockerConfig(options.docker);
 
       // Build image if needed
       if (dockerConfig.needsBuild && dockerConfig.dockerfilePath) {
@@ -762,7 +765,10 @@ export class CCProcess {
 
     try {
       // Resolve Docker configuration
-      const dockerConfig = await this.dockerManager.resolveDockerConfig(options.docker!);
+      if (!options.docker) {
+        throw new Error('Docker option is required but not provided');
+      }
+      const dockerConfig = await this.dockerManager.resolveDockerConfig(options.docker);
 
       // Build image if needed
       if (dockerConfig.needsBuild && dockerConfig.dockerfilePath) {

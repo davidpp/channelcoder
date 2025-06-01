@@ -157,15 +157,6 @@ await claude('Process data', {
   }
 });
 
-// Control authentication mounting
-await claude('Secure task', {
-  docker: {
-    image: 'secure-claude',
-    auth: { 
-      mountHostAuth: false  // Don't mount ~/.claude.json
-    }
-  }
-});
 ```
 
 #### Setting Up Docker Mode
@@ -193,7 +184,6 @@ When using `docker: true`, channelcoder will:
 1. Look for a `Dockerfile` in your project
 2. Build an image automatically (with caching)
 3. Mount your working directory as `/workspace`
-4. Mount your Claude authentication (`~/.claude.json`)
 
 #### Docker Options
 
@@ -207,12 +197,6 @@ interface DockerOptions {
   
   // Path to Dockerfile (default: ./Dockerfile)
   dockerfile?: string;
-  
-  // Authentication options
-  auth?: {
-    mountHostAuth?: boolean;  // Mount ~/.claude.json (default: true)
-    customAuthPath?: string;  // Override auth file location
-  };
   
   // Additional volume mounts
   mounts?: string[];  // Docker format: "host:container:mode"

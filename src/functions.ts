@@ -1,18 +1,18 @@
 import { execSync, spawn, spawnSync } from 'node:child_process';
 import { closeSync, openSync, writeSync } from 'node:fs';
+import { DockerManager } from './docker.js';
 import { loadPromptFile } from './loader.js';
 import { CCProcess } from './process.js';
 import { PromptTemplate } from './template.js';
-import { DockerManager } from './docker.js';
 import type {
   CCOptions,
   CCResult,
+  DockerOptions,
   InterpolationData,
   InterpolationValue,
   LaunchResult,
   PromptConfig,
   StreamChunk,
-  DockerOptions,
 } from './types.js';
 import { validateInput } from './utils/validation.js';
 
@@ -145,21 +145,21 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
     // Handle Docker mode in dry-run
     if (options.docker) {
       const dockerManager = new DockerManager();
-      
+
       try {
         // Resolve Docker configuration
         const dockerConfig = await dockerManager.resolveDockerConfig(options.docker);
-        
+
         // Build Docker args
         const dockerArgs = dockerManager.buildDockerArgs(dockerConfig, mode === 'interactive');
-        
+
         // Build Claude command args
         const claudeCmd = await ccProcess.buildCommand(mergedOptions);
         const claudeArgs = claudeCmd.slice(1); // Remove 'claude' from args
-        
+
         // Combine Docker and Claude args
         const fullArgs = [...dockerArgs, 'claude', ...claudeArgs];
-        
+
         // Build the full command
         const baseCommand = ['docker', ...fullArgs]
           .map((arg) => {
@@ -170,7 +170,7 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
             return arg;
           })
           .join(' ');
-        
+
         // Create the full command with piped input
         let fullCommand: string;
         if (!mergedOptions.resume && !mergedOptions.continue) {
@@ -181,14 +181,14 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
             .replace(/\$/g, '\\$')
             .replace(/`/g, '\\`')
             .replace(/\n/g, '\\n');
-          
+
           // Use echo -e to handle newlines properly
           fullCommand = `echo -e "${escapedPrompt}" | ${baseCommand}`;
         } else {
           // For resume/continue, no prompt is needed
           fullCommand = baseCommand;
         }
-        
+
         return {
           success: true,
           data: {
@@ -196,6 +196,13 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
             args: fullArgs,
             fullCommand,
             prompt, // Include raw prompt for reference
+            // Include detached/streaming info for dry-run testing
+            ...(options.detached && {
+              pid: 12345, // Mock PID for dry-run
+              detached: true,
+              logFile: options.logFile,
+              streaming: options.stream || false,
+            }),
           },
         };
       } catch (error) {
@@ -205,7 +212,7 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
         };
       }
     }
-    
+
     // Non-Docker dry-run
     const args = await ccProcess.buildCommand(mergedOptions);
 

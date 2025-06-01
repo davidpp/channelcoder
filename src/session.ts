@@ -225,7 +225,7 @@ export class SessionManager {
     // Track user message before streaming
     const tempSessionId = resumeId || 'pending';
     this.addMessage('user', prompt, tempSessionId);
-    
+
     // Auto-save user message
     await this.saveState();
 
@@ -237,13 +237,13 @@ export class SessionManager {
     })) {
       // Accumulate assistant content
       assistantContent += chunk.content;
-      
+
       // Update session with partial content in real-time
       this.updateLastMessage('assistant', assistantContent, tempSessionId);
-      
+
       // Auto-save session state with each chunk
       await this.saveState();
-      
+
       yield chunk;
     }
   }
@@ -363,13 +363,13 @@ export class SessionManager {
           // Use existing session ID or generate a temporary one for tracking
           const sessionId = resumeId || this.state.currentSessionId || `detached-${Date.now()}`;
           this.addMessage('user', prompt, sessionId);
-          
+
           // Update session chain if we don't have a session ID yet
           if (!this.state.currentSessionId) {
             this.state.sessionChain.push(sessionId);
             this.state.currentSessionId = sessionId;
           }
-          
+
           await this.saveState();
         }
 

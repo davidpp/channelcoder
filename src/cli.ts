@@ -147,7 +147,16 @@ async function main() {
   });
 
   // Show help
-  if (values.help || (!values.prompt && positionals.length === 0 && !values['list-sessions'] && !values.resume && !values.continue && !values.session && !values['load-session'])) {
+  if (
+    values.help ||
+    (!values.prompt &&
+      positionals.length === 0 &&
+      !values['list-sessions'] &&
+      !values.resume &&
+      !values.continue &&
+      !values.session &&
+      !values['load-session'])
+  ) {
     showHelp();
     process.exit(0);
   }
@@ -259,12 +268,12 @@ async function main() {
     // Handle Docker options
     if (values.docker || values['docker-image']) {
       if (values['docker-image']) {
-        options.docker = { 
+        options.docker = {
           image: values['docker-image'],
           mounts: values['docker-mount'] || [],
           env: {},
         };
-        
+
         // Parse docker env vars
         if (values['docker-env']) {
           const env: Record<string, string> = {};
@@ -274,7 +283,9 @@ async function main() {
               env[key] = valueParts.join('=');
             }
           }
-          (options.docker as any).env = env;
+          if (typeof options.docker === 'object' && options.docker !== null) {
+            options.docker.env = { ...options.docker.env, ...env };
+          }
         }
       } else {
         // Auto-detect mode with optional mounts/env
@@ -285,7 +296,7 @@ async function main() {
             mounts: values['docker-mount'] || [],
             env: {},
           };
-          
+
           // Parse docker env vars for auto mode
           if (values['docker-env']) {
             const env: Record<string, string> = {};
@@ -295,7 +306,9 @@ async function main() {
                 env[key] = valueParts.join('=');
               }
             }
-            (options.docker as any).env = env;
+            if (typeof options.docker === 'object' && options.docker !== null) {
+              options.docker.env = { ...options.docker.env, ...env };
+            }
           }
         }
       }

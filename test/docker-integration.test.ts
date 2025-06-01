@@ -100,21 +100,5 @@ describe('Docker Integration', () => {
       expect(config.image).toBe('claude-sandbox:latest');
       expect(config.needsBuild).toBeUndefined();
     });
-
-    it('should handle custom auth path', async () => {
-      const dockerManager = new DockerManager();
-      const options: DockerOptions = {
-        image: 'test',
-        auth: {
-          customAuthPath: '/custom/path/.claude.json',
-        },
-      };
-
-      const config = await dockerManager.resolveDockerConfig(options);
-
-      // The auth path would be included in mounts if the file existed
-      expect(config.mode).toBe('image');
-      expect(config.image).toBe('test');
-    });
   });
 });

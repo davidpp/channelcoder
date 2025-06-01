@@ -108,12 +108,12 @@ function monitorWithTail(
  */
 function monitorWithWatch(
   logPath: string,
-  onEvent: (event: ClaudeEvent) => void,
+  _onEvent: (event: ClaudeEvent) => void,
   options: MonitorOptions
 ): () => void {
   const { debounceMs = 100 } = options;
 
-  const lastSize = 0;
+  const _lastSize = 0;
   let debounceTimer: Timer | null = null;
 
   const watcher = watch(logPath, (eventType) => {
@@ -152,7 +152,7 @@ function monitorWithWatch(
 export function createParserStream(): Transform {
   return new Transform({
     objectMode: true,
-    transform(chunk, encoding, callback) {
+    transform(chunk, _encoding, callback) {
       // Handle both string and buffer input
       const line = chunk.toString().trim();
 
@@ -175,7 +175,7 @@ export function createParserStream(): Transform {
 export function createChunkStream(): Transform {
   return new Transform({
     objectMode: true,
-    transform(event: ClaudeEvent, encoding, callback) {
+    transform(event: ClaudeEvent, _encoding, callback) {
       // Import inside to avoid circular dependency
       import('./parser.js')
         .then(({ eventToChunk }) => {

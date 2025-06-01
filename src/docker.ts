@@ -73,7 +73,7 @@ export class DockerManager {
   /**
    * Build Docker arguments for execution
    */
-  buildDockerArgs(config: ResolvedDockerConfig, interactive: boolean = false): string[] {
+  buildDockerArgs(config: ResolvedDockerConfig, interactive = false): string[] {
     const args = ['run', '--rm'];
 
     // Add interactive flags
@@ -131,14 +131,10 @@ export class DockerManager {
   }
 
   /**
-   * Get all volume mounts including auth
+   * Get all volume mounts
    */
   private getAllMounts(options: DockerOptions): string[] {
     const mounts: string[] = [];
-
-    // Add auth mounts
-    const authMounts = this.getAuthMounts(options);
-    mounts.push(...authMounts);
 
     // Add working directory mount
     const workDir = process.cwd();
@@ -147,33 +143,6 @@ export class DockerManager {
     // Add user-specified mounts
     if (options.mounts) {
       mounts.push(...options.mounts);
-    }
-
-    return mounts;
-  }
-
-  /**
-   * Get authentication-related mounts
-   */
-  private getAuthMounts(options: DockerOptions): string[] {
-    // Don't mount auth if explicitly disabled
-    if (options.auth?.mountHostAuth === false) {
-      return [];
-    }
-
-    const mounts: string[] = [];
-
-    // Mount main Claude auth file
-    const authFile = options.auth?.customAuthPath || path.join(homedir(), '.claude.json');
-    if (existsSync(authFile)) {
-      // Map to node user's home directory in container
-      mounts.push(`${authFile}:/home/node/.claude.json:ro`);
-    }
-
-    // Mount Claude commands directory if it exists
-    const commandsDir = path.join(homedir(), '.claude', 'commands');
-    if (existsSync(commandsDir)) {
-      mounts.push(`${commandsDir}:/home/node/.claude/commands:ro`);
     }
 
     return mounts;
@@ -197,6 +166,6 @@ export class DockerManager {
 
     const shortHash = Math.abs(hash).toString(16).substring(0, 6);
 
-    return `channelcoder-${projectName}-${dockerfileName}-${shortHash}`;
+    return `channelcoder-${projectName}-${dockerfileName}-${shortHash}`.toLowerCase();
   }
 }

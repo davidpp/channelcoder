@@ -264,7 +264,7 @@ export async function isValidLogFile(logPath: string): Promise<boolean> {
 
     for await (const line of rl) {
       const event = parseStreamEvent(line);
-      if (event && event.type) {
+      if (event?.type) {
         validEventFound = true;
         break;
       }

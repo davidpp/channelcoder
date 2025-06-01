@@ -43,16 +43,15 @@ async function main() {
   console.log('   Full command:', dangerousCommand.data?.fullCommand);
   console.log();
 
-  // Example 4: Docker without auth mounting
-  console.log('4. Docker without mounting host auth:');
-  const noAuthCommand = await claude('Process without host credentials', {
+  // Example 4: Docker with pre-built image
+  console.log('4. Using a pre-built Docker image:');
+  const prebuiltCommand = await claude('Process with custom image', {
     docker: {
-      image: 'pre-authenticated-claude',
-      auth: { mountHostAuth: false }
+      image: 'my-custom-claude:latest',
     },
     dryRun: true,
   });
-  console.log('   Command:', noAuthCommand.data?.fullCommand);
+  console.log('   Command:', prebuiltCommand.data?.fullCommand);
   console.log();
 
   // Example 5: Custom Dockerfile location

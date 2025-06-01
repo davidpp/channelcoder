@@ -11,7 +11,7 @@ export interface CCResult<T = unknown> {
   stderr?: string;
   warnings?: string[];
   sessionId?: string; // Session ID from Claude CLI response
-  
+
   // Detached process information
   pid?: number;
   detached?: boolean;
@@ -165,14 +165,6 @@ export interface DockerOptions {
 
   // Path to Dockerfile to build (default: ./Dockerfile if exists)
   dockerfile?: string;
-
-  // Authentication options
-  auth?: {
-    // Mount host Claude auth (default: true)
-    mountHostAuth?: boolean;
-    // Custom auth file path (default: ~/.claude.json)
-    customAuthPath?: string;
-  };
 
   // Additional volume mounts (Docker format: "host:container:mode")
   mounts?: string[];

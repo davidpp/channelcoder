@@ -40,10 +40,6 @@ await claude('Task', { docker: true });
 await claude('Task', { docker: { image: 'my-claude' } });
 ```
 
-#### Authentication Handling
-- Automatically mounts `~/.claude.json` by default
-- Can be disabled: `auth: { mountHostAuth: false }`
-- Custom auth paths supported
 
 #### Auto-Detection
 - Looks for `./Dockerfile` when `docker: true`
@@ -61,7 +57,6 @@ await claude('Task', { docker: { image: 'my-claude' } });
 - **Unit Tests**: `test/docker-integration.test.ts`
   - Docker args construction
   - Configuration processing
-  - Auth handling
 
 - **E2E Tests**: `test/docker-session-e2e.test.ts`
   - Docker with sessions

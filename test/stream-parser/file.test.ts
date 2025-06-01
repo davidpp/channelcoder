@@ -126,7 +126,7 @@ describe('parseLogStream', () => {
 
     // Stream through file
     let count = 0;
-    for await (const event of parseLogStream(largePath)) {
+    for await (const _event of parseLogStream(largePath)) {
       count++;
       // Early exit to demonstrate streaming
       if (count === 10) break;

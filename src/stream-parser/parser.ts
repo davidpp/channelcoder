@@ -45,7 +45,7 @@ export function parseStreamEvent(jsonLine: string): ClaudeEvent | null {
         // This allows forward compatibility
         return event as ClaudeEvent;
     }
-  } catch (error) {
+  } catch (_error) {
     // Invalid JSON, return null
     return null;
   }
