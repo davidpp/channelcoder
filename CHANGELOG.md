@@ -2,6 +2,68 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.1] - 2025-05-31
+
+### Fixed
+- **CLI Resume Flag**: The `-r` (resume) flag now properly processes sessions instead of showing help text
+
+## [2.3.0] - 2025-01-30
+
+### Added
+- **Stream Parser SDK**: Parse and process Claude's JSONL log files with real-time streaming support
+- **Task Monitoring**: Monitor task progress and status with the new `TaskMonitor` class
+- **Log File Parsing**: Read and parse both active and completed Claude session logs
+- **TUI Example**: Interactive terminal UI for monitoring Claude tasks in real-time
+- **Detached Session Support**: Parse logs from detached Claude sessions for background monitoring
+
+### Changed
+- **Internal Architecture**: Refactored process handling to use the new Stream Parser SDK internally
+
+## [2.2.0] - 2025-01-30
+
+### Added
+- **Detached Streaming Mode**: Run long-running Claude sessions in the background while monitoring their progress in real-time
+- **Real-time Session Monitoring**: Access session state, messages, and outputs while a session is running
+- **Enhanced Session API**: New methods for checking session status, retrieving partial results, and managing detached sessions
+
+### Fixed
+- **Session Detached Tracking**: Improved reliability of detached session state tracking and recovery
+
+## [Unreleased]
+
+### Added
+- **Detached Streaming**: Enhanced detached mode with real-time streaming support via `stream: true` option
+- **Session Auto-Save**: Real-time session file updates during streaming conversations with `autoSave: true`
+- **Real-time Monitoring**: Ability to monitor both Claude output and session state in real-time for background processes
+- **Unix Composability**: Full support for monitoring detached processes with standard Unix tools (`tail -f`, `jq`, `watch`)
+
+### Enhanced
+- **Detached Mode**: Now supports `--output-format stream-json` for real-time log file updates
+- **Session Management**: Session files are updated incrementally during streaming for better monitoring
+- **Error Handling**: Better validation and error messages for detached streaming configuration
+
+## [2.1.1] - 2025-01-29
+
+### Fixed
+- **Interactive Mode**: Resolved "Raw mode is not supported" error when using interactive mode with the latest Claude CLI. The fix changes from shell piping to proper TTY handling, ensuring compatibility with Claude's new Ink-based interactive UI.
+
+## [2.1.0] - 2025-01-28
+
+### Added
+- **Session Management**: Save and continue conversations across multiple CLI invocations, maintaining context and history for complex multi-step workflows
+- **Detached Mode**: Run Claude operations in the background with new `detached: true` option, enabling non-blocking execution
+- **Session Storage API**: New `SessionStorage` class for managing conversation persistence with automatic cleanup
+- **Enhanced CLI**: Added `--session` flag to enable session continuity from the command line
+- **New Examples**: Added comprehensive session management examples including code review, debugging, and iterative development workflows
+
+### Changed
+- **Improved Error Handling**: Better error messages and recovery options when Claude operations fail
+- **Enhanced Process Management**: More robust subprocess handling with improved stream processing
+
+### Fixed
+- **Type Issues**: Resolved linting and type errors in session management implementation
+- **Stream Processing**: Fixed edge cases in streaming output handling
+
 ## [2.1.0] - 2025-01-28
 
 ### Added

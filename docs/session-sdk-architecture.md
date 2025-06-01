@@ -264,6 +264,33 @@ channelcoder -p "Debug this error" --session debug-123
 - Alternative storage backends
 - Session analytics
 
+## Real-time Session Monitoring
+
+The session system supports real-time file updates for monitoring long-running conversations:
+
+```typescript
+// Session with auto-save enables real-time monitoring
+const s = session({ 
+  autoSave: true  // Default: true - saves on every interaction
+});
+
+// Session file updates in real-time during streaming
+for await (const chunk of s.stream('Generate a long story')) {
+  // Session file is updated with each chunk
+  console.log(chunk.content);
+}
+
+// Background execution with session context
+await s.detached('Long analysis task', {
+  logFile: 'analysis.log',
+  stream: true  // Real-time JSON chunks in log file
+});
+
+// Monitor both outputs simultaneously:
+// tail -f analysis.log | jq -r '.content'          # Claude output
+// watch -n 1 cat ~/.channelcoder/sessions/my-session.json  # Session state
+```
+
 ## Example Implementations
 
 ### Basic Debugging Session
@@ -271,8 +298,8 @@ channelcoder -p "Debug this error" --session debug-123
 ```typescript
 import { session } from 'channelcoder';
 
-// Start debugging session
-const debug = session();
+// Start debugging session with auto-save
+const debug = session({ autoSave: true });
 
 // First interaction
 await debug.claude('I have a null pointer error in auth.js');

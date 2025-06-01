@@ -24,3 +24,31 @@ export type {
 
 // Export loader utilities for advanced usage
 export { loadPromptFile, FrontmatterSchema, type Frontmatter } from './loader.js';
+
+// Export stream parser utilities
+export * as streamParser from './stream-parser/index.js';
+
+// High-level stream parser exports for common use cases
+export { parseLogFile, monitorLog } from './stream-parser/index.js';
+
+// Re-export stream parser types for convenience
+export type {
+  ClaudeEvent,
+  SystemEvent,
+  AssistantEvent,
+  ResultEvent,
+  ToolUseEvent,
+  ToolResultEvent,
+  ErrorEvent,
+  ParsedLog,
+} from './stream-parser/types.js';
+
+// Re-export type guards for convenience
+export {
+  isSystemEvent,
+  isAssistantEvent,
+  isResultEvent,
+  isToolUseEvent,
+  isToolResultEvent,
+  isErrorEvent,
+} from './stream-parser/types.js';

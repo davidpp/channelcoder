@@ -147,7 +147,7 @@ async function main() {
   });
 
   // Show help
-  if (values.help || (!values.prompt && positionals.length === 0 && !values['list-sessions'])) {
+  if (values.help || (!values.prompt && positionals.length === 0 && !values['list-sessions'] && !values.resume && !values.continue && !values.session && !values['load-session'])) {
     showHelp();
     process.exit(0);
   }
@@ -326,6 +326,20 @@ async function main() {
         await s.save(values.session);
       }
 
+      process.exit(0);
+    }
+
+    // Handle resume-only mode (just -r with session ID, no prompt)
+    if (values.resume && !values.prompt && positionals.length === 0) {
+      // Resume without additional prompt - just continue the conversation
+      await interactive('', options);
+      process.exit(0);
+    }
+
+    // Handle continue-only mode (just -c, no prompt)
+    if (values.continue && !values.prompt && positionals.length === 0) {
+      // Continue without additional prompt
+      await interactive('', options);
       process.exit(0);
     }
 

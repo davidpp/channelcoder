@@ -76,12 +76,9 @@ Scopecraft supports 6 task types:
 
 ### Templates
 Templates are stored in `.tasks/.templates/`. You can customize them to match your workflow:
-- Edit the TOML frontmatter to add custom fields
+- Edit the YAML frontmatter to add custom fields
 - Modify the markdown structure to fit your needs
 - Templates support all standard MDTM fields
-
-### Configuration
-Project settings are stored in `.tasks/.config/project.toml`
 
 ## 📚 Learn More
 

@@ -50,6 +50,7 @@ export interface ClaudeOptions {
   // Process control
   detached?: boolean; // Run in detached mode (background)
   logFile?: string; // Log file path for detached mode output
+  stream?: boolean; // Enable streaming output in detached mode
 
   // Docker execution
   docker?: boolean | DockerOptions; // Run in Docker container
@@ -244,12 +245,30 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
         args: args.slice(1),
         fullCommand,
         prompt, // Include raw prompt for reference
+        // Include detached/streaming info for dry-run testing
+        ...(options.detached && {
+          pid: 12345, // Mock PID for dry-run
+          detached: true,
+          logFile: options.logFile,
+          streaming: options.stream || false,
+        }),
       },
     };
   }
 
   // Handle detached mode
   if (options.detached) {
+    // Enable streaming output format if stream option is set
+    if (options.stream) {
+      mergedOptions.outputFormat = 'stream-json';
+      if (!options.logFile) {
+        return {
+          success: false,
+          error: 'logFile is required when using detached streaming mode',
+        };
+      }
+    }
+
     const args = await ccProcess.buildCommand(mergedOptions);
 
     // Set up stdio based on logFile
@@ -287,6 +306,7 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
         pid: child.pid,
         detached: true,
         logFile: options.logFile,
+        streaming: options.stream || false,
       },
     };
   }
@@ -414,7 +434,7 @@ async function launchInteractive(
     // But TypeScript needs a return
     return { exitCode: 0 };
   } catch (error) {
-    // This will only execute if execSync fails to launch
+    // This will only execute if spawnSync fails to launch
     console.error('Failed to launch Claude:', error);
     global.process.exit(1);
   }
@@ -552,6 +572,13 @@ export async function run(promptOrFile: string, options: ClaudeOptions = {}): Pr
  * // Run with logging
  * await detached('long-task.md', {
  *   logFile: 'output.log',
+ *   data: { taskId: '123' }
+ * });
+ *
+ * // Run with real-time streaming to log file
+ * await detached('long-task.md', {
+ *   logFile: 'output.log',
+ *   stream: true,
  *   data: { taskId: '123' }
  * });
  */
