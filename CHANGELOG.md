@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0] - 2025-01-06
+
+### Added
+- **Docker Mode**: Run Claude in isolated Docker containers for enhanced security and environment control
+  - Use `--docker` flag with CLI or `docker: true` option in SDK
+  - Automatic container management with volume mounting
+  - Supports all standard Claude features in containerized environment
+- **Docker SDK Integration**: New `docker()` function for programmatic Docker mode usage
+  - Example: `await docker({ prompt: "Hello", vars: { name: "World" } })`
+  - Full support for streaming, interactive mode, and session management
+  - Compatible with all existing SDK options
+
+### Changed
+- **Enhanced CLI Options**: Added Docker-specific flags for container control
+  - `--docker`: Enable Docker mode
+  - `--docker-image`: Specify custom Claude Docker image
+  - Improved help documentation for Docker features
+
+### Fixed
+- **Linting Issues**: Resolved TypeScript and Biome linting warnings for cleaner codebase
+- **Session Management**: Fixed dry-run mode compatibility with Docker sessions
+
 ## [2.3.1] - 2025-05-31
 
 ### Fixed
