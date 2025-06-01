@@ -208,7 +208,9 @@ export function monitorMultipleLogs(
 
   // Return combined cleanup
   return () => {
-    cleanups.forEach((cleanup) => cleanup());
+    for (const cleanup of cleanups) {
+      cleanup();
+    }
   };
 }
 
@@ -233,7 +235,8 @@ export function createAsyncMonitor(
     logPath,
     (event) => {
       if (waiters.length > 0) {
-        const waiter = waiters.shift()!;
+        const waiter = waiters.shift();
+        if (!waiter) return;
         waiter({ value: event, done: false });
       } else {
         events.push(event);
@@ -251,7 +254,8 @@ export function createAsyncMonitor(
           }
 
           if (events.length > 0) {
-            const event = events.shift()!;
+            const event = events.shift();
+            if (!event) throw new Error('Event queue empty unexpectedly');
             return { value: event, done: false };
           }
 
@@ -276,7 +280,9 @@ export function createAsyncMonitor(
       done = true;
       cleanup();
       // Resolve any waiting promises
-      waiters.forEach((waiter) => waiter({ done: true, value: undefined }));
+      for (const waiter of waiters) {
+        waiter({ done: true, value: undefined });
+      }
     },
   };
 }

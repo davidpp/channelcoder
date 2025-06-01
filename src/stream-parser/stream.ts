@@ -128,8 +128,10 @@ export async function* parseEventStreamSafe(
  */
 export async function* compose<T, R>(
   source: AsyncIterable<T>,
+  // biome-ignore lint/suspicious/noExplicitAny: Generic transform pipeline needs flexible typing
   ...transforms: Array<(input: AsyncIterable<any>) => AsyncIterable<any>>
 ): AsyncIterable<R> {
+  // biome-ignore lint/suspicious/noExplicitAny: Result type evolves through transform pipeline
   let result: AsyncIterable<any> = source;
 
   for (const transform of transforms) {

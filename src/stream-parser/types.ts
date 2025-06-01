@@ -69,6 +69,7 @@ export interface ResultEvent {
 export interface ToolUseEvent {
   type: 'tool_use';
   tool: string;
+  // biome-ignore lint/suspicious/noExplicitAny: Tool inputs can be any valid JSON structure from Claude
   input: any;
   session_id: string;
   timestamp?: number;
@@ -80,6 +81,7 @@ export interface ToolUseEvent {
 export interface ToolResultEvent {
   type: 'tool_result';
   tool: string;
+  // biome-ignore lint/suspicious/noExplicitAny: Tool outputs can be any valid JSON structure from Claude
   output: any;
   session_id: string;
   timestamp?: number;
@@ -114,6 +116,7 @@ export interface StreamChunk {
   content: string;
   timestamp: number;
   tool?: string;
+  // biome-ignore lint/suspicious/noExplicitAny: Event metadata can contain arbitrary data from Claude
   metadata?: Record<string, any>;
 }
 

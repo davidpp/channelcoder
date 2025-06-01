@@ -80,9 +80,9 @@ describe('claude function - dry-run command generation', () => {
     const patterns = ['test.md', './test.md', '../test.md'];
 
     // These should all be treated as files (even if they don't exist in dry-run)
-    patterns.forEach((pattern) => {
+    for (const pattern of patterns) {
       expect(pattern.endsWith('.md') || pattern.startsWith('./')).toBe(true);
-    });
+    }
   });
 
   test('inline prompts are not treated as files', async () => {
