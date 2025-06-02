@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.1] - 2025-06-02
+
+### Fixed
+- **Session Loading**: Fixed error when using `--load-session` without providing a prompt file. Users can now resume existing sessions without specifying new input, enabling workflows like `channelcoder --load-session <name>` to continue conversations seamlessly.
+
 ## [2.4.0] - 2025-01-06
 
 ### Added
