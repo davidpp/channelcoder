@@ -329,9 +329,12 @@ async function main() {
       // Execute with session
       if (values.prompt) {
         await s.interactive(values.prompt, options);
-      } else {
+      } else if (positionals.length > 0) {
         const promptFile = resolve(positionals[0]);
         await s.interactive(promptFile, options);
+      } else {
+        // Load session without additional prompt - just continue the conversation
+        await s.interactive('', options);
       }
 
       // Save session if name provided
