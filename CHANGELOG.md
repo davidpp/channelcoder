@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.5.0] - 2025-06-05
+
+### Added
+- **Docker OAuth Authentication**: Run Claude Code in isolated Docker containers with pre-configured OAuth authentication, enabling secure multi-agent workflows
+- **Automatic Security Defaults**: When using Docker mode, dangerous permissions are automatically skipped by default since the container provides network isolation
+- **Firewall Protection**: Built-in firewall security enabled by default in Docker mode to prevent unauthorized network access
+- **Easy Setup Scripts**: New `docker/setup-auth.sh` script for simple Docker authentication workflow setup
+- **Persistent Auth Tokens**: Support for baking authentication tokens directly into Docker images for streamlined deployments
+
 ## [2.4.1] - 2025-06-02
 
 ### Fixed
