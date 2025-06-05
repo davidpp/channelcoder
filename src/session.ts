@@ -339,6 +339,9 @@ export class SessionManager {
       // Wrapped interactive function
       interactive: async (prompt: string, options?: ClaudeOptions) => {
         const resumeId = this.state.sessionChain[this.state.sessionChain.length - 1];
+        if (options?.verbose) {
+          console.log('Session resuming with ID:', resumeId);
+        }
         return interactiveBase(prompt, {
           ...options,
           resume: resumeId || options?.resume,

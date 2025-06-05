@@ -492,6 +492,20 @@ export class CCProcess {
     if (options.maxTurns !== undefined) {
       cmd.push('--max-turns', String(options.maxTurns));
     }
+    
+    // Handle dangerouslySkipPermissions with Docker-aware defaults
+    if (options.docker) {
+      // When using Docker, skip permissions by default (safe due to firewall)
+      // User must explicitly set to false to enable permission prompts
+      if (options.dangerouslySkipPermissions !== false) {
+        cmd.push('--dangerously-skip-permissions');
+      }
+    } else {
+      // Without Docker, only skip if explicitly requested
+      if (options.dangerouslySkipPermissions) {
+        cmd.push('--dangerously-skip-permissions');
+      }
+    }
 
     // Add output format
     if (options.outputFormat) {

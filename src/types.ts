@@ -72,6 +72,9 @@ export interface CCOptions {
 
   // Docker execution options
   docker?: boolean | DockerOptions;
+
+  // Skip all permission prompts (dangerous - use with caution!)
+  dangerouslySkipPermissions?: boolean;
 }
 
 /**
