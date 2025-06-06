@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.6.0] - 2025-06-06
+
+### Added
+- **Worktree Support**: Complete worktree management system with create, list, remove, and cleanup commands for isolated development environments
+- **Enhanced CLI Architecture**: Migrated CLI to Stricli framework providing better command structure and type safety
+- **Worktree SDK**: New SDK module for programmatic worktree management with comprehensive API
+- **Session Management Commands**: New CLI commands for listing, loading, and removing development sessions
+- **Worktree Usage Examples**: Added example code demonstrating worktree features and usage patterns
+
+### Changed
+- **CLI Structure**: Refactored CLI from monolithic structure to modular command-based architecture
+- **Process Management**: Enhanced subprocess handling with better error reporting and stream management
+- **Command Parsing**: Improved command line argument parsing and flag handling through Stricli integration
+
 ## [2.5.0] - 2025-06-05
 
 ### Added
