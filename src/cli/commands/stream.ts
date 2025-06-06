@@ -1,0 +1,168 @@
+import { buildCommand, type CommandContext } from '@stricli/core';
+import { stream } from '../../index.js';
+import {
+  globalFlags,
+  dataFlags,
+  systemFlags,
+  toolFlags,
+  mcpFlags,
+  executionFlags,
+} from '../flags/index.js';
+import { parseDataArgs, readStdinJson, parseTools } from '../utils.js';
+import type { ClaudeOptions } from '../../types.js';
+
+interface StreamFlags {
+  // Data
+  data?: string[];
+  dataStdin?: boolean;
+
+  // System
+  system?: string;
+  appendSystem?: string;
+
+  // Tools
+  tools?: string;
+  disallowedTools?: string;
+
+  // MCP
+  mcpConfig?: string;
+  permissionTool?: string;
+
+  // Execution
+  maxTurns?: number;
+  dangerouslySkipPermissions?: boolean;
+  verbose?: boolean;
+  parse?: boolean;
+}
+
+/**
+ * Parse data from flags
+ */
+async function parseData(flags: StreamFlags): Promise<Record<string, any>> {
+  let data = {};
+
+  if (flags.dataStdin) {
+    data = await readStdinJson();
+  }
+
+  if (flags.data) {
+    const cliData = await parseDataArgs(flags.data);
+    data = { ...data, ...cliData };
+  }
+
+  return data;
+}
+
+/**
+ * Build Claude options from flags
+ */
+function buildOptions(flags: StreamFlags, data: Record<string, any>): Partial<ClaudeOptions> {
+  const options: Partial<ClaudeOptions> = {};
+
+  // Data
+  if (Object.keys(data).length > 0) {
+    options.data = data;
+  }
+
+  // System prompts
+  if (flags.system) options.system = flags.system;
+  if (flags.appendSystem) options.appendSystem = flags.appendSystem;
+
+  // Tools
+  if (flags.tools) options.tools = parseTools(flags.tools);
+  if (flags.disallowedTools) options.disallowedTools = parseTools(flags.disallowedTools);
+
+  // MCP
+  if (flags.mcpConfig) options.mcpConfig = flags.mcpConfig;
+  if (flags.permissionTool) options.permissionTool = flags.permissionTool;
+
+  // Execution
+  if (flags.maxTurns !== undefined) options.maxTurns = flags.maxTurns;
+  if (flags.dangerouslySkipPermissions) options.dangerouslySkipPermissions = true;
+  if (flags.verbose) options.verbose = true;
+  if (flags.parse) options.parse = true;
+
+  return options;
+}
+
+export const streamCommand = buildCommand({
+  docs: {
+    brief: 'Stream responses in real-time',
+    customUsage: [
+      '"Analyze this data" --parse',
+      'generate.md -d template=component',
+      'chat.md --max-turns 10',
+    ],
+  },
+  async func(this: CommandContext, flags: StreamFlags, promptFile?: string) {
+    // Parse data
+    const data = await parseData(flags);
+
+    // Build options
+    const options = buildOptions(flags, data);
+
+    // Determine prompt source from positional argument
+    const promptSource = promptFile || '';
+
+    if (!promptSource) {
+      this.process.stderr.write('Error: Prompt file or text is required\n');
+      this.process.exit(1);
+      return;
+    }
+
+    // Stream responses
+    try {
+      for await (const chunk of stream(promptSource, options)) {
+        if (flags.parse) {
+          // Output as JSON lines
+          this.process.stdout.write(JSON.stringify(chunk) + '\n');
+        } else {
+          // Output raw content
+          if (chunk.type === 'content' && chunk.content) {
+            this.process.stdout.write(chunk.content);
+          } else if (chunk.type === 'error') {
+            this.process.stderr.write(`Error: ${chunk.content}\n`);
+          }
+        }
+      }
+    } catch (error) {
+      this.process.stderr.write(`Error: ${error}\n`);
+      this.process.exit(1);
+    }
+  },
+  parameters: {
+    positional: {
+      kind: 'tuple',
+      parameters: [
+        {
+          brief: 'Prompt text or file path',
+          parse: String,
+          optional: true,
+        },
+      ],
+    },
+    flags: {
+      ...globalFlags,
+      ...dataFlags,
+      ...systemFlags,
+      ...toolFlags,
+      ...mcpFlags,
+      ...executionFlags,
+      parse: {
+        kind: 'boolean' as const,
+        default: false,
+        brief: 'Output parsed JSON chunks',
+      } as const,
+    },
+    aliases: {
+      // Data aliases
+      d: 'data',
+      // System aliases
+      s: 'system',
+      // Tool aliases
+      t: 'tools',
+      // Global aliases
+      v: 'verbose',
+    },
+  },
+});

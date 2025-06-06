@@ -1,5 +1,5 @@
 import { buildCommand, type CommandContext } from '@stricli/core';
-import { run } from '../../index.js';
+import { interactive } from '../../index.js';
 import {
   globalFlags,
   dataFlags,
@@ -14,7 +14,7 @@ import {
 import { parseDataArgs, readStdinJson, parseTools, parseDockerEnv } from '../utils.js';
 import type { ClaudeOptions, DockerOptions, WorktreeOptions } from '../../types.js';
 
-interface RunFlags {
+interface InteractiveFlags {
   // Data
   data?: string[];
   dataStdin?: boolean;
@@ -57,7 +57,7 @@ interface RunFlags {
 /**
  * Parse data from flags
  */
-async function parseData(flags: RunFlags): Promise<Record<string, any>> {
+async function parseData(flags: InteractiveFlags): Promise<Record<string, any>> {
   let data = {};
 
   if (flags.dataStdin) {
@@ -75,7 +75,7 @@ async function parseData(flags: RunFlags): Promise<Record<string, any>> {
 /**
  * Build Docker options from flags
  */
-function buildDockerOptions(flags: RunFlags): boolean | DockerOptions | undefined {
+function buildDockerOptions(flags: InteractiveFlags): boolean | DockerOptions | undefined {
   if (!flags.docker && !flags.dockerImage) {
     return undefined;
   }
@@ -103,7 +103,7 @@ function buildDockerOptions(flags: RunFlags): boolean | DockerOptions | undefine
 /**
  * Build worktree options from flags
  */
-function buildWorktreeOptions(flags: RunFlags): WorktreeOptions | undefined {
+function buildWorktreeOptions(flags: InteractiveFlags): WorktreeOptions | undefined {
   if (!flags.worktree) {
     return undefined;
   }
@@ -118,7 +118,7 @@ function buildWorktreeOptions(flags: RunFlags): WorktreeOptions | undefined {
 /**
  * Build Claude options from flags
  */
-function buildOptions(flags: RunFlags, data: Record<string, any>): Partial<ClaudeOptions> {
+function buildOptions(flags: InteractiveFlags, data: Record<string, any>): Partial<ClaudeOptions> {
   const options: Partial<ClaudeOptions> = {};
 
   // Data
@@ -166,7 +166,7 @@ function buildOptions(flags: RunFlags, data: Record<string, any>): Partial<Claud
  * Handle session mode execution
  */
 async function executeWithSession(
-  flags: RunFlags,
+  flags: InteractiveFlags,
   promptSource: string,
   options: Partial<ClaudeOptions>
 ): Promise<void> {
@@ -176,23 +176,23 @@ async function executeWithSession(
     ? await session.load(flags.loadSession)
     : session({ name: flags.session });
 
-  await s.run(promptSource, options);
+  await s.interactive(promptSource, options);
 
   if (flags.session) {
     await s.save(flags.session);
   }
 }
 
-export const runCommand = buildCommand({
+export const interactiveCommand = buildCommand({
   docs: {
-    brief: 'Execute prompt and exit (print mode)',
+    brief: 'Launch interactive Claude UI',
     customUsage: [
-      '"Quick calculation: 2+2"',
-      'analyze.md -d file=src/index.ts',
-      'generate.md --max-turns 5',
+      '"Help me debug this"',
+      'refactor.md -d file=index.ts',
+      '--session feature-work --docker',
     ],
   },
-  async func(this: CommandContext, flags: RunFlags, promptFile?: string) {
+  async func(this: CommandContext, flags: InteractiveFlags, promptFile?: string) {
     // Parse data
     const data = await parseData(flags);
 
@@ -208,8 +208,8 @@ export const runCommand = buildCommand({
       return;
     }
 
-    // Execute in run mode
-    await run(promptSource, options);
+    // Launch interactive mode
+    await interactive(promptSource, options);
   },
   parameters: {
     positional: {

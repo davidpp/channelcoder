@@ -6,7 +6,6 @@ import { numberParser } from '@stricli/core';
 export const globalFlags = {
   verbose: {
     kind: 'boolean' as const,
-    alias: 'v',
     brief: 'Enable verbose output',
     default: false,
   } satisfies TypedFlagParameter<boolean>,
@@ -16,10 +15,10 @@ export const globalFlags = {
 export const dataFlags = {
   data: {
     kind: 'parsed' as const,
-    alias: 'd',
     variadic: true,
     parse: (value: string) => value,
     brief: 'Data for template interpolation (key=value)',
+    optional: true,
   } satisfies TypedFlagParameter<string[]>,
   dataStdin: {
     kind: 'boolean' as const,
@@ -32,14 +31,15 @@ export const dataFlags = {
 export const systemFlags = {
   system: {
     kind: 'parsed' as const,
-    alias: 's',
     parse: (value: string) => value,
     brief: 'System prompt (inline text or .md file path)',
+    optional: true,
   } satisfies TypedFlagParameter<string>,
   appendSystem: {
     kind: 'parsed' as const,
     parse: (value: string) => value,
     brief: 'Append text to system prompt',
+    optional: true,
   } satisfies TypedFlagParameter<string>,
 };
 
@@ -47,14 +47,15 @@ export const systemFlags = {
 export const toolFlags = {
   tools: {
     kind: 'parsed' as const,
-    alias: 't',
     parse: (value: string) => value,
     brief: 'Allowed tools (comma or space separated)',
+    optional: true,
   } satisfies TypedFlagParameter<string>,
   disallowedTools: {
     kind: 'parsed' as const,
     parse: (value: string) => value,
     brief: 'Disallowed tools',
+    optional: true,
   } satisfies TypedFlagParameter<string>,
 };
 
@@ -62,13 +63,12 @@ export const toolFlags = {
 export const sessionFlags = {
   resume: {
     kind: 'parsed' as const,
-    alias: 'r',
     parse: (value: string) => value,
     brief: 'Resume conversation by session ID',
+    optional: true,
   } satisfies TypedFlagParameter<string>,
   continue: {
     kind: 'boolean' as const,
-    alias: 'c',
     default: false,
     brief: 'Continue most recent conversation',
   } satisfies TypedFlagParameter<boolean>,
@@ -76,11 +76,13 @@ export const sessionFlags = {
     kind: 'parsed' as const,
     parse: (value: string) => value,
     brief: 'Start or continue named session',
+    optional: true,
   } satisfies TypedFlagParameter<string>,
   loadSession: {
     kind: 'parsed' as const,
     parse: (value: string) => value,
     brief: 'Load and continue existing session',
+    optional: true,
   } satisfies TypedFlagParameter<string>,
 };
 
@@ -90,11 +92,13 @@ export const mcpFlags = {
     kind: 'parsed' as const,
     parse: (value: string) => value,
     brief: 'MCP server configuration file',
+    optional: true,
   } satisfies TypedFlagParameter<string>,
   permissionTool: {
     kind: 'parsed' as const,
     parse: (value: string) => value,
     brief: 'MCP permission prompt tool',
+    optional: true,
   } satisfies TypedFlagParameter<string>,
 };
 
@@ -109,18 +113,21 @@ export const dockerFlags = {
     kind: 'parsed' as const,
     parse: (value: string) => value,
     brief: 'Use specific Docker image',
+    optional: true,
   } satisfies TypedFlagParameter<string>,
   dockerMount: {
     kind: 'parsed' as const,
     variadic: true,
     parse: (value: string) => value,
     brief: 'Add Docker volume mount',
+    optional: true,
   } satisfies TypedFlagParameter<string[]>,
   dockerEnv: {
     kind: 'parsed' as const,
     variadic: true,
     parse: (value: string) => value,
     brief: 'Add Docker environment variable',
+    optional: true,
   } satisfies TypedFlagParameter<string[]>,
 };
 
@@ -128,14 +135,15 @@ export const dockerFlags = {
 export const worktreeFlags = {
   worktree: {
     kind: 'parsed' as const,
-    alias: 'w',
     parse: (value: string) => value,
     brief: 'Run in git worktree (creates if needed)',
+    optional: true,
   } satisfies TypedFlagParameter<string>,
   worktreeBase: {
     kind: 'parsed' as const,
     parse: (value: string) => value,
     brief: 'Base branch for new worktree',
+    optional: true,
   } satisfies TypedFlagParameter<string>,
   worktreeKeep: {
     kind: 'boolean' as const,
@@ -150,6 +158,7 @@ export const executionFlags = {
     kind: 'parsed' as const,
     parse: numberParser,
     brief: 'Limit number of agentic turns',
+    optional: true,
   } satisfies TypedFlagParameter<number>,
   dangerouslySkipPermissions: {
     kind: 'boolean' as const,
@@ -166,10 +175,3 @@ export const formatFlag = {
   brief: 'Output format',
 } satisfies TypedFlagParameter<'table' | 'json' | 'simple'>;
 
-// Prompt flag
-export const promptFlag = {
-  kind: 'parsed' as const,
-  alias: 'p',
-  parse: (value: string) => value,
-  brief: 'Inline prompt instead of file',
-} satisfies TypedFlagParameter<string>;
