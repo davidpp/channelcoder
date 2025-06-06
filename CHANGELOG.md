@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.0] - 2025-01-09
+
+### Added
+- **CLI Subcommands**: Restructured CLI with proper subcommands mapping to SDK functions
+- **Interactive Command**: New dedicated interactive command for enhanced user experience
+- **Stream Command**: New stream command for real-time output handling
+
+### Changed
+- **CLI Architecture**: Improved command structure and organization for better usability
+- **Command Mapping**: Enhanced mapping between CLI commands and SDK functions
+- **Flag Handling**: Improved flag processing and organization
+
 ## [2.6.1] - 2025-06-06
 
 ### Fixed
