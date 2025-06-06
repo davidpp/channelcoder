@@ -161,6 +161,197 @@ Docker containers need their own authentication setup. Options include:
 2. Environment variables passed via `env` option
 3. Custom authentication mechanisms within the container
 
+### Claude State Management
+
+> **FOR REVIEW**: This section proposes how to handle Claude's internal state (`~/.claude/projects`) when using Docker. Please review the isolation strategies and default behaviors.
+
+Claude stores its internal project state in `~/.claude/projects`, which contains:
+- Project memory and context
+- Session data
+- Project metadata
+
+#### State Isolation Strategies
+
+1. **None (Default)** - Share global Claude state
+   ```typescript
+   await claude('Task', { docker: true });
+   // Mounts: ~/.claude → /home/claude/.claude
+   ```
+
+2. **Project** - Isolate at project level
+   ```typescript
+   await claude('Task', {
+     docker: true,
+     state: { stateIsolation: 'project' }
+   });
+   // Mounts: ./.channelcoder/.claude-state → /home/claude/.claude
+   ```
+
+3. **Worktree** - Isolate per git worktree
+   ```typescript
+   await claude('Task', {
+     worktree: 'feature/auth',
+     docker: true,
+     state: { stateIsolation: 'worktree' }
+   });
+   // Mounts: ../worktree-path/.claude-state → /home/claude/.claude
+   ```
+
+4. **Ephemeral** - Temporary state, destroyed after execution
+   ```typescript
+   await claude('Experiment', {
+     docker: true,
+     state: { 
+       stateIsolation: 'ephemeral',
+       copyStateFrom: 'global'  // Optional: start with existing state
+     }
+   });
+   ```
+
+> **REVIEW QUESTION**: Should we default to 'none' (share global state) or 'project' (isolate by default)? Global sharing is simpler but project isolation might be safer.
+
+#### Implementation Details
+
+```typescript
+interface ClaudeStateOptions {
+  // State isolation strategy
+  stateIsolation?: 'none' | 'project' | 'worktree' | 'ephemeral';
+  
+  // Copy state from another context
+  copyStateFrom?: 'global' | 'project' | string;
+  
+  // Sync state back after execution (for ephemeral)
+  syncBack?: boolean;
+}
+
+// Extended DockerOptions
+interface DockerOptions {
+  // ... existing options
+  state?: ClaudeStateOptions;
+}
+```
+
+#### State Mount Resolution
+
+```typescript
+private getClaudeStateMount(options: ClaudeOptions): Mount {
+  const stateOpts = options.docker?.state || options.state;
+  
+  switch (stateOpts?.stateIsolation) {
+    case 'project':
+      return {
+        host: path.join(process.cwd(), '.channelcoder/.claude-state'),
+        container: '/home/claude/.claude',
+        mode: 'rw'
+      };
+      
+    case 'worktree':
+      const worktreePath = this.getWorktreePath(options.worktree);
+      return {
+        host: path.join(worktreePath, '.claude-state'),
+        container: '/home/claude/.claude',
+        mode: 'rw'
+      };
+      
+    case 'ephemeral':
+      const tempPath = this.createTempClaudeState(stateOpts.copyStateFrom);
+      return {
+        host: tempPath,
+        container: '/home/claude/.claude',
+        mode: 'rw',
+        cleanup: true  // Remove after execution
+      };
+      
+    case 'none':
+    default:
+      return {
+        host: path.join(homedir(), '.claude'),
+        container: '/home/claude/.claude',
+        mode: 'rw'
+      };
+  }
+}
+```
+
+> **REVIEW NOTE**: The ephemeral state creates a temporary directory that's cleaned up after execution. This is useful for experiments but needs careful handling of the cleanup process.
+
+#### Smart Project Detection
+
+> **FOR REVIEW**: This auto-detection might be too magical. Should we make it explicit?
+
+```typescript
+private async detectAndMountProject(options: ClaudeOptions): Promise<Mount | null> {
+  if (options.state?.stateIsolation !== 'none') return null;
+  
+  // Check if current directory is associated with a Claude project
+  const projectsDir = path.join(homedir(), '.claude/projects');
+  const projects = await fs.readdir(projectsDir);
+  
+  for (const projectId of projects) {
+    const metadataPath = path.join(projectsDir, projectId, 'metadata.json');
+    if (await fs.exists(metadataPath)) {
+      const metadata = await fs.readJson(metadataPath);
+      if (metadata.workingDirectory === process.cwd()) {
+        // Mount only this specific project
+        return {
+          host: path.join(projectsDir, projectId),
+          container: path.join('/home/claude/.claude/projects', projectId),
+          mode: 'rw'
+        };
+      }
+    }
+  }
+  
+  return null;
+}
+```
+
+#### Recommended Usage Patterns
+
+```typescript
+// Feature development - isolated state per branch
+await worktree('feature/payments', async (wt) => {
+  await claude('Implement payment system', {
+    state: { 
+      stateIsolation: 'worktree',
+      copyStateFrom: 'global'  // Inherit context from main
+    }
+  });
+});
+
+// Risky experiments - ephemeral state
+await claude('Try dangerous refactor', {
+  docker: true,
+  state: { stateIsolation: 'ephemeral' }
+});
+
+// Production work - shared global state
+await claude('Fix production bug', {
+  docker: true
+  // Default: shares ~/.claude state
+});
+```
+
+> **REVIEW QUESTION**: Should we add state management utilities (list, copy, export) as part of the SDK, or keep it focused on Docker execution only?
+
+#### State Management Utilities
+
+```typescript
+export const claudeState = {
+  // List all Claude projects
+  async listProjects(statePath?: string): Promise<ProjectInfo[]>,
+  
+  // Copy state between locations
+  async copy(from: string, to: string): Promise<void>,
+  
+  // Export/import for backup and sharing
+  async export(projectId: string, outputPath: string): Promise<void>,
+  async import(archivePath: string, statePath?: string): Promise<void>
+};
+```
+
+> **FOR REVIEW**: These utilities would help with state management but might be out of scope for the Docker feature. Should they be a separate module?
+
 ## Implementation Details
 
 ### Auto-detection Logic
