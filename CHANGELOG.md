@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.1] - 2025-01-28
+
+### Fixed
+- **CLI Commands**: Fixed `run` and `stream` commands not properly outputting content to users
+- **Stream Parsing**: Corrected inverted logic in stream command parsing - now outputs content by default and raw JSON only when explicitly requested with `--parse` flag
+
 ## [2.7.0] - 2025-01-09
 
 ### Added
