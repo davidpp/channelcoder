@@ -54,6 +54,9 @@ export interface ClaudeOptions {
 
   // Docker execution
   docker?: boolean | DockerOptions; // Run in Docker container
+
+  // Worktree execution
+  worktree?: boolean | string | import('./worktree/types.js').WorktreeOptions; // Run in git worktree
 }
 
 // Internal: Detect if input is a file path
@@ -79,6 +82,7 @@ function convertOptions(options: ClaudeOptions): CCOptions & PromptConfig {
     maxTurns: options.maxTurns,
     timeout: options.timeout, // No default timeout
     docker: options.docker,
+    worktree: options.worktree,
   };
 
   const promptConfig: PromptConfig = {};

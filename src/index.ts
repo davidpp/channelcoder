@@ -31,6 +31,22 @@ export * as streamParser from './stream-parser/index.js';
 // High-level stream parser exports for common use cases
 export { parseLogFile, monitorLog } from './stream-parser/index.js';
 
+// Export worktree utilities
+export * as worktreeUtils from './worktree/index.js';
+
+// High-level worktree exports for common use cases
+export { worktree } from './worktree/index.js';
+
+// Re-export worktree types for convenience
+export type {
+  WorktreeOptions,
+  WorktreeInfo,
+  ResolvedWorktreeConfig,
+} from './worktree/types.js';
+
+// Re-export worktree error class
+export { WorktreeError } from './worktree/types.js';
+
 // Re-export stream parser types for convenience
 export type {
   ClaudeEvent,

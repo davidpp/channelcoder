@@ -9,6 +9,8 @@ import type {
   ResolvedDockerConfig,
   StreamChunk,
 } from './types.js';
+import { WorktreeManager } from './worktree/manager.js';
+import type { WorktreeInfo, WorktreeOptions } from './worktree/types.js';
 
 /**
  * Process manager for Claude Code CLI execution
@@ -17,6 +19,7 @@ export class CCProcess {
   private claudeAvailable?: boolean;
   private skipAvailabilityCheck = false;
   private dockerManager: DockerManager;
+  private worktreeManager: WorktreeManager;
 
   constructor(private defaultOptions: CCOptions) {
     // Allow skipping availability check for testing
@@ -26,6 +29,7 @@ export class CCProcess {
       process.env.SKIP_CLAUDE_CHECK === 'true';
 
     this.dockerManager = new DockerManager();
+    this.worktreeManager = new WorktreeManager();
   }
 
   /**
@@ -70,6 +74,11 @@ export class CCProcess {
    * Execute a prompt and wait for the result
    */
   async execute(prompt: string, options: CCOptions & PromptConfig): Promise<CCResult> {
+    // Handle Worktree mode
+    if (options.worktree) {
+      return this.executeInWorktree(prompt, options);
+    }
+
     // Handle Docker mode
     if (options.docker) {
       return this.executeInDocker(prompt, options);
@@ -268,6 +277,12 @@ export class CCProcess {
     prompt: string,
     options: CCOptions & PromptConfig & { parse?: boolean }
   ): AsyncIterable<StreamChunk> {
+    // Handle Worktree mode
+    if (options.worktree) {
+      yield* this.streamInWorktree(prompt, options);
+      return;
+    }
+
     // Handle Docker mode
     if (options.docker) {
       yield* this.streamInDocker(prompt, options);
@@ -492,7 +507,7 @@ export class CCProcess {
     if (options.maxTurns !== undefined) {
       cmd.push('--max-turns', String(options.maxTurns));
     }
-    
+
     // Handle dangerouslySkipPermissions with Docker-aware defaults
     if (options.docker) {
       // When using Docker, skip permissions by default (safe due to firewall)
@@ -958,5 +973,116 @@ export class CCProcess {
         timestamp: Date.now(),
       };
     }
+  }
+
+  /**
+   * Execute in worktree context
+   */
+  private async executeInWorktree(
+    prompt: string,
+    options: CCOptions & PromptConfig
+  ): Promise<CCResult> {
+    try {
+      // Resolve worktree configuration
+      if (!options.worktree) {
+        throw new Error('Worktree option is required but not provided');
+      }
+      const worktreeConfig = this.resolveWorktreeConfig(options.worktree);
+
+      // Ensure worktree exists
+      const worktreeInfo = await this.worktreeManager.ensureWorktree(
+        worktreeConfig.branch,
+        worktreeConfig
+      );
+
+      // Execute within worktree context
+      return await this.worktreeManager.executeInWorktree(worktreeInfo, async () => {
+        // Create new options without worktree to avoid infinite recursion
+        const { worktree: _, ...executeOptions } = options;
+
+        // Check if we also need Docker within the worktree
+        if (options.docker) {
+          return this.executeInDocker(prompt, executeOptions);
+        }
+
+        // Regular execution within worktree
+        return this.execute(prompt, executeOptions);
+      });
+    } catch (error) {
+      return {
+        success: false,
+        error: `Worktree execution failed: ${error}`,
+      };
+    }
+  }
+
+  /**
+   * Stream execution in worktree context
+   */
+  private async *streamInWorktree(
+    prompt: string,
+    options: CCOptions & PromptConfig & { parse?: boolean }
+  ): AsyncIterable<StreamChunk> {
+    try {
+      // Resolve worktree configuration
+      if (!options.worktree) {
+        throw new Error('Worktree option is required but not provided');
+      }
+      const worktreeConfig = this.resolveWorktreeConfig(options.worktree);
+
+      // Ensure worktree exists
+      const worktreeInfo = await this.worktreeManager.ensureWorktree(
+        worktreeConfig.branch,
+        worktreeConfig
+      );
+
+      // Create async generator function that will run in worktree context
+      const streamGenerator = async function* (self: CCProcess) {
+        // Create new options without worktree to avoid infinite recursion
+        const { worktree: _, ...streamOptions } = options;
+
+        // Check if we also need Docker within the worktree
+        if (options.docker) {
+          yield* self.streamInDocker(prompt, streamOptions);
+        } else {
+          // Regular streaming within worktree
+          yield* self.stream(prompt, streamOptions);
+        }
+      };
+
+      // Execute the generator within worktree context
+      yield* await this.worktreeManager.executeInWorktree(worktreeInfo, async () => {
+        return streamGenerator(this);
+      });
+    } catch (error) {
+      yield {
+        type: 'error',
+        content: `Worktree stream execution failed: ${error}`,
+        timestamp: Date.now(),
+      };
+    }
+  }
+
+  /**
+   * Resolve worktree configuration from options
+   */
+  private resolveWorktreeConfig(
+    worktree: boolean | string | WorktreeOptions
+  ): WorktreeOptions & { branch: string } {
+    if (typeof worktree === 'boolean') {
+      throw new Error(
+        'Worktree requires a branch name. Use worktree: "branch-name" or worktree: { branch: "branch-name" }'
+      );
+    }
+
+    if (typeof worktree === 'string') {
+      return { branch: worktree };
+    }
+
+    if (!worktree.branch) {
+      throw new Error('Worktree configuration must specify a branch name');
+    }
+
+    return worktree as WorktreeOptions & { branch: string };
   }
 }

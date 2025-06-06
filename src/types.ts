@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import type { WorktreeOptions } from './worktree/types.js';
 
 /**
  * Result from CC (Claude Code) execution
@@ -72,6 +73,9 @@ export interface CCOptions {
 
   // Docker execution options
   docker?: boolean | DockerOptions;
+
+  // Worktree execution options
+  worktree?: boolean | string | WorktreeOptions;
 
   // Skip all permission prompts (dangerous - use with caution!)
   dangerouslySkipPermissions?: boolean;

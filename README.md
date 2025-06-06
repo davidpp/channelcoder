@@ -135,6 +135,95 @@ const result4 = await detached('Generate comprehensive report', {
 // Monitor with: tail -f report.log | jq -r '.content'
 ```
 
+### 🌿 Git Worktree Mode
+
+Run Claude in isolated git worktrees for parallel development and clean experimentation:
+
+```typescript
+// Simple worktree usage - auto-creates if doesn't exist
+await claude('Implement new feature', { 
+  worktree: 'feature/auth' 
+});
+
+// Standalone worktree function for complex workflows
+await worktree('feature/payments', async (wt) => {
+  console.log(`Working in: ${wt.path}`);
+  await claude('Design payment system');
+  await claude('Implement payment processing');
+  return 'feature-complete';
+}, {
+  base: 'main',      // Create from main branch
+  cleanup: false     // Keep worktree after execution
+});
+
+// Worktree utilities for advanced management
+import { worktreeUtils } from 'channelcoder';
+
+// List all worktrees
+const worktrees = await worktreeUtils.list();
+
+// Create/remove worktrees manually
+await worktreeUtils.create('experiment/new-arch', { base: 'develop' });
+await worktreeUtils.remove('feature/old');
+
+// Check worktree existence
+if (await worktreeUtils.exists('feature/auth')) {
+  console.log('Auth worktree already exists');
+}
+```
+
+#### Why Use Worktrees?
+
+1. **Parallel Development**: Work on multiple features without stashing/switching
+2. **Clean Experiments**: Test risky changes in isolated environments
+3. **Context Preservation**: Each worktree maintains its own file state
+4. **Session Enhancement**: Combine with sessions for branch-specific conversations
+
+#### Worktree Options
+
+```typescript
+interface WorktreeOptions {
+  // Branch name (required for creation)
+  branch?: string;
+  
+  // Base branch for new worktree
+  base?: string;
+  
+  // Custom path (auto-generated if not provided)
+  path?: string;
+  
+  // Remove worktree after execution (default: true for temporary)
+  cleanup?: boolean;
+  
+  // Force creation vs. error if exists (default: false - upsert)
+  create?: boolean;
+}
+```
+
+#### Composing Features
+
+Worktrees work seamlessly with other ChannelCoder features:
+
+```typescript
+// Worktree + Session
+const s = session();
+await s.claude('Start OAuth feature', { worktree: 'feature/oauth' });
+await s.claude('Add tests'); // Continues in same worktree
+
+// Worktree + Docker
+await claude('Test in total isolation', {
+  worktree: 'experiment/risky',
+  docker: true
+});
+
+// Worktree + Streaming
+await worktree('feature/docs', async () => {
+  for await (const chunk of stream('Generate documentation')) {
+    process.stdout.write(chunk.content);
+  }
+});
+```
+
 ### 🐳 Docker Mode
 
 Run Claude in an isolated Docker container for enhanced security with dangerous permissions:
