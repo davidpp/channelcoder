@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.6.1] - 2025-06-06
+
+### Fixed
+- **CLI Initialization**: Fixed broken release where CLI couldn't properly read package.json for version and description information, causing initialization failures
+
 ## [2.6.0] - 2025-06-06
 
 ### Added
