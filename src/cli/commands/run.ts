@@ -209,7 +209,27 @@ export const runCommand = buildCommand({
     }
 
     // Execute in run mode
-    await run(promptSource, options);
+    const result = await run(promptSource, options);
+    
+    // Print the result
+    if (result.success) {
+      if (result.data) {
+        // If data is a string, print it directly
+        if (typeof result.data === 'string') {
+          console.log(result.data);
+        } else {
+          // Otherwise print as JSON
+          console.log(JSON.stringify(result.data, null, 2));
+        }
+      } else if (result.stdout) {
+        // Fallback to stdout if no data
+        console.log(result.stdout);
+      }
+    } else {
+      // Print error to stderr
+      console.error(result.error || 'Command failed');
+      process.exit(1);
+    }
   },
   parameters: {
     positional: {

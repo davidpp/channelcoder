@@ -80,7 +80,8 @@ function buildOptions(flags: StreamFlags, data: Record<string, any>): Partial<Cl
   if (flags.maxTurns !== undefined) options.maxTurns = flags.maxTurns;
   if (flags.dangerouslySkipPermissions) options.dangerouslySkipPermissions = true;
   if (flags.verbose) options.verbose = true;
-  if (flags.parse) options.parse = true;
+  // Default to parsing (extracting content) unless --parse flag is used for raw JSON
+  options.parse = !flags.parse;
 
   return options;
 }
@@ -113,16 +114,18 @@ export const streamCommand = buildCommand({
     // Stream responses
     try {
       for await (const chunk of stream(promptSource, options)) {
-        if (flags.parse) {
-          // Output as JSON lines
-          this.process.stdout.write(JSON.stringify(chunk) + '\n');
-        } else {
-          // Output raw content
+        // The parse option has been inverted - when false (default), we output content
+        // When true (--parse flag), we output raw JSON
+        if (!flags.parse) {
+          // Default: Output content only
           if (chunk.type === 'content' && chunk.content) {
             this.process.stdout.write(chunk.content);
           } else if (chunk.type === 'error') {
             this.process.stderr.write(`Error: ${chunk.content}\n`);
           }
+        } else {
+          // --parse flag: Output raw JSON chunks
+          this.process.stdout.write(JSON.stringify(chunk) + '\n');
         }
       }
     } catch (error) {
@@ -151,7 +154,7 @@ export const streamCommand = buildCommand({
       parse: {
         kind: 'boolean' as const,
         default: false,
-        brief: 'Output parsed JSON chunks',
+        brief: 'Output raw JSON chunks instead of content',
       } as const,
     },
     aliases: {
