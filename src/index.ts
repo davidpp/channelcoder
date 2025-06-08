@@ -20,10 +20,19 @@ export type {
   LaunchResult,
   InterpolationData,
   InterpolationValue,
+  LaunchOptions,
+  RunOptions,
+  StreamOptions,
+  PromptConfig,
+  DockerOptions,
+  ResolvedDockerConfig,
 } from './types.js';
 
 // Export loader utilities for advanced usage
 export { loadPromptFile, FrontmatterSchema, type Frontmatter } from './loader.js';
+
+// Export validation utilities
+export type { ValidationResult } from './utils/validation.js';
 
 // Export stream parser utilities
 export * as streamParser from './stream-parser/index.js';
