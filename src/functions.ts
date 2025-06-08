@@ -76,13 +76,14 @@ function isFilePath(input: string): boolean {
 function convertOptions(options: ClaudeOptions): CCOptions & PromptConfig {
   const ccOptions: CCOptions = {
     verbose: options.verbose,
-    outputFormat: options.outputFormat || 'json',
+    outputFormat: options.outputFormat || (options.mode === 'interactive' ? undefined : 'json'),
     resume: options.resume,
     continue: options.continue,
     maxTurns: options.maxTurns,
     timeout: options.timeout, // No default timeout
     docker: options.docker,
     worktree: options.worktree,
+    mode: options.mode,
   };
 
   const promptConfig: PromptConfig = {};
@@ -158,7 +159,11 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
         const dockerArgs = dockerManager.buildDockerArgs(dockerConfig, mode === 'interactive');
 
         // Build Claude command args
-        const claudeCmd = await ccProcess.buildCommand(mergedOptions);
+        // For stream mode, ensure output format is stream-json
+        const dockerDryRunOptions = mode === 'stream' 
+          ? { ...mergedOptions, outputFormat: 'stream-json' as const }
+          : mergedOptions;
+        const claudeCmd = await ccProcess.buildCommand(dockerDryRunOptions);
         const claudeArgs = claudeCmd.slice(1); // Remove 'claude' from args
 
         // Combine Docker and Claude args
@@ -218,7 +223,11 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
     }
 
     // Non-Docker dry-run
-    const args = await ccProcess.buildCommand(mergedOptions);
+    // For stream mode, ensure output format is stream-json
+    const dryRunOptions = mode === 'stream' 
+      ? { ...mergedOptions, outputFormat: 'stream-json' as const }
+      : mergedOptions;
+    const args = await ccProcess.buildCommand(dryRunOptions);
 
     // Build the base command
     const baseCommand = args
