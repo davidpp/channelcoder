@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.8.0] - 2025-06-08
+
+### Added
+- **Comprehensive Documentation**: Complete documentation suite including guides for Docker mode, session management, stream parser, and worktree mode with reference materials
+- **TypeScript Type Exports**: Enhanced SDK with additional exported types including LaunchOptions, RunOptions, StreamOptions, PromptConfig, DockerOptions, ResolvedDockerConfig, and ValidationResult for better TypeScript development experience
+
 ## [2.7.1] - 2025-01-28
 
 ### Fixed
