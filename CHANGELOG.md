@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.8.1] - 2025-01-08
+
+### Fixed
+- **Mode Option Handling**: Fixed issue where mode option was not properly passed through to CCOptions, ensuring correct behavior for interactive and stream modes
+- **Output Format**: Improved output format handling for stream mode to ensure proper stream-json format
+
 ## [2.8.0] - 2025-06-08
 
 ### Added
