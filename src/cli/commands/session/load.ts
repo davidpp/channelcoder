@@ -1,4 +1,4 @@
-import { buildCommand, type CommandContext } from '@stricli/core';
+import { type CommandContext, buildCommand } from '@stricli/core';
 import { session } from '../../../session.js';
 import { globalFlags } from '../../flags/index.js';
 

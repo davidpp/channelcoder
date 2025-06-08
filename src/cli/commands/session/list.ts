@@ -1,6 +1,6 @@
-import { buildCommand, type CommandContext } from '@stricli/core';
+import { type CommandContext, buildCommand } from '@stricli/core';
 import { session } from '../../../session.js';
-import { globalFlags, formatFlag } from '../../flags/index.js';
+import { formatFlag, globalFlags } from '../../flags/index.js';
 import { formatSessionList } from '../../utils.js';
 
 export const listCommand = buildCommand({
@@ -17,7 +17,10 @@ export const listCommand = buildCommand({
       format: formatFlag,
     },
   },
-  async func(this: CommandContext, flags: { format?: 'table' | 'json' | 'simple'; verbose?: boolean }) {
+  async func(
+    this: CommandContext,
+    flags: { format?: 'table' | 'json' | 'simple'; verbose?: boolean }
+  ) {
     const sessions = await session.list();
     this.process.stdout.write(formatSessionList(sessions, flags.format));
   },

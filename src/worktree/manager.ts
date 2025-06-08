@@ -1,7 +1,12 @@
-import simpleGit, { type SimpleGit } from 'simple-git';
-import { join, resolve, dirname, basename } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { cwd } from 'node:process';
-import type { WorktreeOptions, WorktreeInfo, ResolvedWorktreeConfig, WorktreeError } from './types.js';
+import simpleGit, { type SimpleGit } from 'simple-git';
+import type {
+  ResolvedWorktreeConfig,
+  WorktreeError,
+  WorktreeInfo,
+  WorktreeOptions,
+} from './types.js';
 
 /**
  * Manages git worktree operations using simple-git
@@ -22,13 +27,13 @@ export class WorktreeManager {
     try {
       // Resolve configuration
       const config = this.resolveConfig(branch, options);
-      
+
       // Check if worktree already exists
       const existing = await this.findExistingWorktree(config.branch);
       if (existing && !config.create) {
         return {
           ...existing,
-          originalPath: this.projectRoot
+          originalPath: this.projectRoot,
         };
       }
 
@@ -38,22 +43,21 @@ export class WorktreeManager {
       // Create worktree if it doesn't exist
       if (!existing) {
         await this.createWorktree(config);
-        
+
         return {
           branch: config.branch,
           path: config.path,
           exists: false,
           autoCreated: true,
-          originalPath: this.projectRoot
+          originalPath: this.projectRoot,
         };
       }
 
       // Return existing worktree info
       return {
         ...existing,
-        originalPath: this.projectRoot
+        originalPath: this.projectRoot,
       };
-
     } catch (error) {
       throw this.createWorktreeError(error, 'Failed to ensure worktree');
     }
@@ -66,28 +70,28 @@ export class WorktreeManager {
     try {
       const worktrees = await this.git.raw(['worktree', 'list', '--porcelain']);
       const lines = worktrees.split('\n').filter(Boolean);
-      
+
       let currentPath = '';
       let currentBranch = '';
-      
+
       for (const line of lines) {
         if (line.startsWith('worktree ')) {
           currentPath = line.substring(9);
         } else if (line.startsWith('branch ')) {
           currentBranch = line.substring(7);
-          
+
           // Check if this is the branch we're looking for
           if (currentBranch === `refs/heads/${branch}` || currentBranch === branch) {
             return {
               branch,
               path: resolve(currentPath),
               exists: true,
-              originalPath: this.projectRoot
+              originalPath: this.projectRoot,
             };
           }
         }
       }
-      
+
       return null;
     } catch (error) {
       // If worktree command fails, assume no worktrees exist
@@ -102,10 +106,10 @@ export class WorktreeManager {
     try {
       const worktrees = await this.git.raw(['worktree', 'list', '--porcelain']);
       const lines = worktrees.split('\n').filter(Boolean);
-      
+
       const result: WorktreeInfo[] = [];
       let currentWorktree: Partial<WorktreeInfo> = {};
-      
+
       for (const line of lines) {
         if (line.startsWith('worktree ')) {
           // Start of new worktree entry
@@ -115,23 +119,23 @@ export class WorktreeManager {
           currentWorktree = {
             path: resolve(line.substring(9)),
             exists: true,
-            originalPath: this.projectRoot
+            originalPath: this.projectRoot,
           };
         } else if (line.startsWith('branch ')) {
           const branchRef = line.substring(7);
-          currentWorktree.branch = branchRef.startsWith('refs/heads/') 
-            ? branchRef.substring(11) 
+          currentWorktree.branch = branchRef.startsWith('refs/heads/')
+            ? branchRef.substring(11)
             : branchRef;
         } else if (line.startsWith('HEAD ')) {
           currentWorktree.commit = line.substring(5);
         }
       }
-      
+
       // Add the last worktree
       if (currentWorktree.path) {
         result.push(currentWorktree as WorktreeInfo);
       }
-      
+
       return result;
     } catch (error) {
       return [];
@@ -146,7 +150,7 @@ export class WorktreeManager {
       const args = ['worktree', 'remove'];
       if (force) args.push('--force');
       args.push(path);
-      
+
       await this.git.raw(args);
     } catch (error) {
       throw this.createWorktreeError(error, `Failed to remove worktree at ${path}`);
@@ -156,12 +160,9 @@ export class WorktreeManager {
   /**
    * Execute a function within a worktree context
    */
-  async executeInWorktree<T>(
-    worktreeInfo: WorktreeInfo,
-    callback: () => Promise<T>
-  ): Promise<T> {
+  async executeInWorktree<T>(worktreeInfo: WorktreeInfo, callback: () => Promise<T>): Promise<T> {
     const originalCwd = cwd();
-    
+
     try {
       process.chdir(worktreeInfo.path);
       return await callback();
@@ -175,13 +176,13 @@ export class WorktreeManager {
    */
   private resolveConfig(branch: string, options: WorktreeOptions): ResolvedWorktreeConfig {
     const path = options.path || this.generateWorktreePath(branch);
-    
+
     return {
       branch,
       path: resolve(path),
       base: options.base,
       cleanup: options.cleanup ?? true,
-      create: options.create ?? false
+      create: options.create ?? false,
     };
   }
 
@@ -193,7 +194,7 @@ export class WorktreeManager {
     const safeBranch = branch.replace(/[\/\\:*?"<>|]/g, '-');
     const projectName = basename(this.projectRoot);
     const parentDir = dirname(this.projectRoot);
-    
+
     return join(parentDir, `${projectName}-${safeBranch}`);
   }
 
@@ -210,10 +211,10 @@ export class WorktreeManager {
 
       // Check if branch exists remotely
       const remoteBranches = await this.git.branch(['-r']);
-      const remoteBranch = remoteBranches.all.find(b => 
-        b.includes(`/${branch}`) || b.endsWith(branch)
+      const remoteBranch = remoteBranches.all.find(
+        (b) => b.includes(`/${branch}`) || b.endsWith(branch)
       );
-      
+
       if (remoteBranch) {
         // Branch exists remotely, we can track it
         return;
@@ -226,10 +227,9 @@ export class WorktreeManager {
 
       // Validate base branch exists
       const allBranches = [...branches.all, ...remoteBranches.all];
-      if (!allBranches.some(b => b.includes(base) || b === base)) {
+      if (!allBranches.some((b) => b.includes(base) || b === base)) {
         throw new Error(`Base branch '${base}' does not exist`);
       }
-
     } catch (error) {
       throw this.createWorktreeError(error, 'Branch validation failed');
     }
@@ -241,7 +241,7 @@ export class WorktreeManager {
   private async createWorktree(config: ResolvedWorktreeConfig): Promise<void> {
     try {
       const args = ['worktree', 'add', config.path];
-      
+
       if (config.base) {
         // Create new branch from base
         args.push('-b', config.branch, config.base);
@@ -249,10 +249,13 @@ export class WorktreeManager {
         // Use existing branch
         args.push(config.branch);
       }
-      
+
       await this.git.raw(args);
     } catch (error) {
-      throw this.createWorktreeError(error, `Failed to create worktree for branch '${config.branch}'`);
+      throw this.createWorktreeError(
+        error,
+        `Failed to create worktree for branch '${config.branch}'`
+      );
     }
   }
 
@@ -261,14 +264,14 @@ export class WorktreeManager {
    */
   private createWorktreeError(originalError: any, message: string): WorktreeError {
     const { WorktreeError } = require('./types.js');
-    
+
     if (originalError instanceof WorktreeError) {
       return originalError;
     }
 
     let code: any = 'GIT_ERROR';
     const errorMessage = originalError?.message || String(originalError);
-    
+
     if (errorMessage.includes('already exists')) {
       code = 'WORKTREE_EXISTS';
     } else if (errorMessage.includes('not found') || errorMessage.includes('does not exist')) {
@@ -277,10 +280,6 @@ export class WorktreeManager {
       code = 'PATH_CONFLICT';
     }
 
-    return new WorktreeError(
-      `${message}: ${errorMessage}`,
-      code,
-      originalError
-    );
+    return new WorktreeError(`${message}: ${errorMessage}`, code, originalError);
   }
 }

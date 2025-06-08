@@ -1,4 +1,4 @@
-import { buildCommand, type CommandContext, type TypedFlagParameter } from '@stricli/core';
+import { type CommandContext, type TypedFlagParameter, buildCommand } from '@stricli/core';
 import { worktreeUtils } from '../../../worktree/index.js';
 import { globalFlags } from '../../flags/index.js';
 
@@ -30,7 +30,11 @@ export const createCommand = buildCommand({
       } satisfies TypedFlagParameter<string>,
     },
   },
-  async func(this: CommandContext, flags: { base?: string; path?: string; verbose?: boolean }, branch: string) {
+  async func(
+    this: CommandContext,
+    flags: { base?: string; path?: string; verbose?: boolean },
+    branch: string
+  ) {
     try {
       const worktree = await worktreeUtils.create(branch, {
         base: flags.base,
@@ -41,7 +45,9 @@ export const createCommand = buildCommand({
       this.process.stdout.write(`  Branch: ${worktree.branch}\n`);
       this.process.stdout.write(`  Path: ${worktree.path}\n`);
       if (worktree.autoCreated) {
-        this.process.stdout.write(`  Note: Branch was created from ${flags.base || 'current branch'}\n`);
+        this.process.stdout.write(
+          `  Note: Branch was created from ${flags.base || 'current branch'}\n`
+        );
       }
     } catch (error) {
       this.process.stderr.write(`Error creating worktree: ${(error as Error).message}\n`);

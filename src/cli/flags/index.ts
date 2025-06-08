@@ -174,4 +174,3 @@ export const formatFlag = {
   default: 'table' as const,
   brief: 'Output format',
 } satisfies TypedFlagParameter<'table' | 'json' | 'simple'>;
-

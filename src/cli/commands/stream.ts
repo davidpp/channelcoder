@@ -1,15 +1,15 @@
-import { buildCommand, type CommandContext } from '@stricli/core';
+import { type CommandContext, buildCommand } from '@stricli/core';
 import { stream } from '../../index.js';
+import type { ClaudeOptions } from '../../types.js';
 import {
-  globalFlags,
   dataFlags,
+  executionFlags,
+  globalFlags,
+  mcpFlags,
   systemFlags,
   toolFlags,
-  mcpFlags,
-  executionFlags,
 } from '../flags/index.js';
-import { parseDataArgs, readStdinJson, parseTools } from '../utils.js';
-import type { ClaudeOptions } from '../../types.js';
+import { parseDataArgs, parseTools, readStdinJson } from '../utils.js';
 
 interface StreamFlags {
   // Data

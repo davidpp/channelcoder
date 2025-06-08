@@ -1,6 +1,6 @@
 /**
  * Worktree module exports
- * 
+ *
  * Provides git worktree management functionality with multiple levels of abstraction:
  * - High-level: worktree() function for callback-based usage
  * - Building blocks: worktreeUtils.* for advanced users
@@ -20,7 +20,7 @@ export { WorktreeManager } from './manager.js';
 export type {
   WorktreeOptions,
   WorktreeInfo,
-  ResolvedWorktreeConfig
+  ResolvedWorktreeConfig,
 } from './types.js';
 
 // Error class

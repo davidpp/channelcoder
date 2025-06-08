@@ -1,18 +1,18 @@
-import { buildCommand, type CommandContext } from '@stricli/core';
+import { type CommandContext, buildCommand } from '@stricli/core';
 import { run } from '../../index.js';
+import type { ClaudeOptions, DockerOptions, WorktreeOptions } from '../../types.js';
 import {
-  globalFlags,
   dataFlags,
+  dockerFlags,
+  executionFlags,
+  globalFlags,
+  mcpFlags,
+  sessionFlags,
   systemFlags,
   toolFlags,
-  sessionFlags,
-  dockerFlags,
   worktreeFlags,
-  mcpFlags,
-  executionFlags,
 } from '../flags/index.js';
-import { parseDataArgs, readStdinJson, parseTools, parseDockerEnv } from '../utils.js';
-import type { ClaudeOptions, DockerOptions, WorktreeOptions } from '../../types.js';
+import { parseDataArgs, parseDockerEnv, parseTools, readStdinJson } from '../utils.js';
 
 interface RunFlags {
   // Data
@@ -210,7 +210,7 @@ export const runCommand = buildCommand({
 
     // Execute in run mode
     const result = await run(promptSource, options);
-    
+
     // Print the result
     if (result.success) {
       if (result.data) {

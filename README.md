@@ -43,20 +43,29 @@ await claude('Review this code', {
 
 ### CLI Usage
 
-The CLI runs Claude interactively in your terminal, with added template processing:
+The CLI provides multiple commands for different execution modes:
 
 ```bash
-# Run a prompt file with data
-channelcoder prompts/analyze.md -d taskId=FEAT-123
+# Interactive mode (default) - run Claude interactively
+channelcoder interactive prompts/analyze.md -d taskId=FEAT-123
 
-# Inline prompt with variables
-channelcoder -p "Summarize: {text}" -d text="Hello world"
+# Run mode - execute and print results
+channelcoder run "Explain TypeScript"
+channelcoder run prompts/analyze.md --data taskId=FEAT-123
 
-# With tools and system prompt
-channelcoder prompt.md -t "Read Write" -s "Be concise"
+# Stream mode - real-time streaming responses  
+channelcoder stream "Write a story"
+channelcoder stream prompts/generate.md
 
-# Resume session
-channelcoder -r session-id
+# Session management
+channelcoder session list                    # List saved sessions
+channelcoder session load my-session         # Load and continue a session
+channelcoder session remove old-session      # Remove a session
+
+# Worktree management
+channelcoder worktree list                   # List git worktrees
+channelcoder worktree create feature/new     # Create new worktree
+channelcoder worktree remove feature/old     # Remove worktree
 ```
 
 ## Features
@@ -298,10 +307,28 @@ interface DockerOptions {
 ## CLI Reference
 
 ```bash
-channelcoder [prompt-file] [options]
-# or
-channelcoder [prompt-file] [options]
+channelcoder <command> [options]
 
+Commands:
+  run          Execute prompt and exit (print mode) - non-interactive
+  interactive  Interactive mode with Claude (default)
+  stream       Stream responses in real-time
+  session      Manage conversation sessions
+  worktree     Manage git worktrees
+
+Global Options:
+  -h, --help     Show help
+  -v, --version  Show version
+
+Run 'channelcoder <command> --help' for command-specific options
+```
+
+### Command Details
+
+#### `channelcoder run [prompt-file] [options]`
+Execute a prompt and print the result without interaction.
+
+```bash
 Options:
   -p, --prompt <text>      Inline prompt instead of file
   -d, --data <key=value>   Data for interpolation (repeatable)
@@ -314,9 +341,53 @@ Options:
   -r, --resume <id>        Resume conversation by session ID
   -c, --continue           Continue most recent conversation
   --max-turns <n>          Limit agentic turns
+  --json                   Output JSON format
   -v, --verbose            Verbose output
-  -h, --help               Show help
 ```
+
+#### `channelcoder interactive [prompt-file] [options]`
+Launch Claude in interactive mode (default command).
+
+```bash
+Options: Same as 'run' command
+```
+
+#### `channelcoder stream [prompt-file] [options]`
+Stream responses in real-time.
+
+```bash
+Options: Same as 'run' command
+```
+
+#### `channelcoder session <subcommand>`
+Manage conversation sessions.
+
+```bash
+Subcommands:
+  list       List all saved sessions
+  load       Load and continue a session
+  remove     Remove a saved session
+```
+
+#### `channelcoder worktree <subcommand>`
+Manage git worktrees for isolated development.
+
+```bash
+Subcommands:
+  list       List all worktrees
+  create     Create a new worktree
+  remove     Remove a worktree
+  cleanup    Clean up orphaned worktrees
+```
+
+## Advanced Features Documentation
+
+For detailed guides on advanced features, see the `/documentation` folder:
+
+- **[Docker Mode Guide](/documentation/guides/docker-mode.md)** - Run Claude in isolated containers with enhanced security
+- **[Git Worktree Mode Guide](/documentation/guides/worktree-mode.md)** - Parallel development in isolated git worktrees
+- **[Session Management Guide](/documentation/guides/session-management.md)** - Multi-turn conversations with context preservation
+- **[Stream Parser SDK Guide](/documentation/guides/stream-parser.md)** - Parse and monitor Claude's streaming output
 
 ### Frontmatter Syntax
 

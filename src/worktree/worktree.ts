@@ -1,17 +1,17 @@
 import { WorktreeManager } from './manager.js';
-import type { WorktreeOptions, WorktreeInfo } from './types.js';
+import type { WorktreeInfo, WorktreeOptions } from './types.js';
 
 /**
  * Execute a callback within a git worktree context
- * 
+ *
  * This is the main user-facing function for worktree operations.
  * It follows the same pattern as other ChannelCoder utilities like parseLogFile().
- * 
+ *
  * @param branch - Branch name for the worktree
  * @param callback - Function to execute in worktree context
  * @param options - Worktree configuration options
  * @returns Result of the callback function
- * 
+ *
  * @example
  * ```typescript
  * // Basic usage
@@ -19,7 +19,7 @@ import type { WorktreeOptions, WorktreeInfo } from './types.js';
  *   console.log('Working in:', wt.path);
  *   return await claude('Implement OAuth');
  * });
- * 
+ *
  * // With configuration
  * await worktree('experiment/risky', async (wt) => {
  *   return await claude('Test changes', { docker: true });
@@ -35,10 +35,10 @@ export async function worktree<T>(
   options: WorktreeOptions = {}
 ): Promise<T> {
   const manager = new WorktreeManager();
-  
+
   // Ensure worktree exists (upsert behavior)
   const worktreeInfo = await manager.ensureWorktree(branch, options);
-  
+
   try {
     // Execute callback within worktree context
     return await manager.executeInWorktree(worktreeInfo, async () => {

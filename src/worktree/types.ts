@@ -49,7 +49,12 @@ export interface ResolvedWorktreeConfig {
 export class WorktreeError extends Error {
   constructor(
     message: string,
-    public code: 'BRANCH_NOT_FOUND' | 'PATH_CONFLICT' | 'GIT_ERROR' | 'WORKTREE_EXISTS' | 'INVALID_OPTIONS',
+    public code:
+      | 'BRANCH_NOT_FOUND'
+      | 'PATH_CONFLICT'
+      | 'GIT_ERROR'
+      | 'WORKTREE_EXISTS'
+      | 'INVALID_OPTIONS',
     public details?: any
   ) {
     super(message);

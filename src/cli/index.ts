@@ -1,10 +1,10 @@
 import { buildApplication, buildRouteMap } from '@stricli/core';
-import { runCommand } from './commands/run.js';
-import { interactiveCommand } from './commands/interactive.js';
-import { streamCommand } from './commands/stream.js';
-import { sessionCommand } from './commands/session/index.js';
-import { worktreeCommand } from './commands/worktree/index.js';
 import pkg from '../../package.json' assert { type: 'json' };
+import { interactiveCommand } from './commands/interactive.js';
+import { runCommand } from './commands/run.js';
+import { sessionCommand } from './commands/session/index.js';
+import { streamCommand } from './commands/stream.js';
+import { worktreeCommand } from './commands/worktree/index.js';
 
 const routes = buildRouteMap({
   routes: {

@@ -1,8 +1,8 @@
-import { buildCommand, type CommandContext } from '@stricli/core';
-import { globalFlags } from '../../flags/index.js';
 import { homedir } from 'os';
 import { join } from 'path';
+import { type CommandContext, buildCommand } from '@stricli/core';
 import { unlink } from 'fs/promises';
+import { globalFlags } from '../../flags/index.js';
 
 export const removeCommand = buildCommand({
   docs: {
@@ -22,7 +22,7 @@ export const removeCommand = buildCommand({
   },
   async func(this: CommandContext, flags: { verbose?: boolean }, name: string) {
     const sessionPath = join(homedir(), '.channelcoder', 'sessions', name);
-    
+
     try {
       await unlink(sessionPath);
       this.process.stdout.write(`Removed session: ${name}\n`);
