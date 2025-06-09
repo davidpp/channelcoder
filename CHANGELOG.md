@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.8.2] - 2025-06-09
+
+### Fixed
+- **Type Definitions**: Added missing 'stream-json' option to outputFormat type in ClaudeOptions interface
+
+### Documentation
+- **Session Management**: Added comprehensive pluggable storage documentation with examples
+- **File-based Prompts**: Enhanced documentation with detailed usage patterns and best practices
+- **Template System**: Corrected documentation to accurately reflect actual implementation behavior
+
 ## [2.8.1] - 2025-01-08
 
 ### Fixed
