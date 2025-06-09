@@ -42,7 +42,7 @@ export interface ClaudeOptions {
 
   // Other
   verbose?: boolean; // Verbose output
-  outputFormat?: 'json' | 'text'; // Output format
+  outputFormat?: 'json' | 'stream-json' | 'text'; // Output format
   timeout?: number; // Timeout in milliseconds
   dryRun?: boolean; // Return command instead of executing
   parse?: boolean; // Parse JSON messages in stream mode (default: false)
