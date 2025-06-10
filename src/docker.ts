@@ -53,7 +53,7 @@ export class DockerManager {
       // Check for Dockerfile
       const dockerfilePath = dockerOpts.dockerfile || './Dockerfile';
       if (existsSync(dockerfilePath)) {
-        const imageName = await this.generateImageName(dockerfilePath);
+        const imageName = await this.generateImageName(dockerfilePath, dockerOpts.cwd);
         return {
           mode: 'dockerfile',
           image: imageName,
@@ -137,7 +137,7 @@ export class DockerManager {
     const mounts: string[] = [];
 
     // Add working directory mount
-    const workDir = process.cwd();
+    const workDir = options.cwd || process.cwd();
     mounts.push(`${workDir}:/workspace:rw`);
 
     // Add user-specified mounts
@@ -151,10 +151,10 @@ export class DockerManager {
   /**
    * Generate a unique image name for a Dockerfile
    */
-  private async generateImageName(dockerfilePath: string): Promise<string> {
+  private async generateImageName(dockerfilePath: string, cwd?: string): Promise<string> {
     // Use project directory name and dockerfile name
     const projectName = path
-      .basename(process.cwd())
+      .basename(cwd || process.cwd())
       .toLowerCase()
       .replace(/[^a-z0-9-]/g, '-');
     const dockerfileName = path.basename(dockerfilePath, path.extname(dockerfilePath));

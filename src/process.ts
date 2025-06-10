@@ -5,6 +5,7 @@ import { eventToChunk, extractSessionId, parseStreamEvent } from './stream-parse
 import type {
   CCOptions,
   CCResult,
+  DockerOptions,
   PromptConfig,
   ResolvedDockerConfig,
   StreamChunk,
@@ -581,7 +582,11 @@ export class CCProcess {
       if (!options.docker) {
         throw new Error('Docker option is required but not provided');
       }
-      const dockerConfig = await this.dockerManager.resolveDockerConfig(options.docker);
+      // Normalize docker options to include cwd
+      const dockerOptions: DockerOptions = typeof options.docker === 'boolean' 
+        ? { auto: true, cwd: options.cwd }
+        : { ...options.docker, cwd: options.docker.cwd || options.cwd };
+      const dockerConfig = await this.dockerManager.resolveDockerConfig(dockerOptions);
 
       // Build image if needed
       if (dockerConfig.needsBuild && dockerConfig.dockerfilePath) {
@@ -797,7 +802,11 @@ export class CCProcess {
       if (!options.docker) {
         throw new Error('Docker option is required but not provided');
       }
-      const dockerConfig = await this.dockerManager.resolveDockerConfig(options.docker);
+      // Normalize docker options to include cwd
+      const dockerOptions: DockerOptions = typeof options.docker === 'boolean' 
+        ? { auto: true, cwd: options.cwd }
+        : { ...options.docker, cwd: options.docker.cwd || options.cwd };
+      const dockerConfig = await this.dockerManager.resolveDockerConfig(dockerOptions);
 
       // Build image if needed
       if (dockerConfig.needsBuild && dockerConfig.dockerfilePath) {

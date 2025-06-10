@@ -186,6 +186,9 @@ export interface DockerOptions {
 
   // Additional environment variables
   env?: Record<string, string>;
+
+  // Working directory for docker operations (defaults to process.cwd())
+  cwd?: string;
 }
 
 /**
