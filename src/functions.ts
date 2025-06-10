@@ -399,10 +399,44 @@ async function launchInteractive(
       shellCommand = `exec claude ${escapedArgs}`;
     }
 
+    // Handle worktree support for interactive mode
+    let cwd: string | undefined;
+    if (options.worktree) {
+      const { WorktreeManager } = await import('./worktree/manager.js');
+      const manager = new WorktreeManager();
+      
+      try {
+        // Resolve worktree configuration
+        let branch: string;
+        let worktreeOptions: any = {};
+        
+        if (typeof options.worktree === 'string') {
+          branch = options.worktree;
+        } else if (typeof options.worktree === 'object') {
+          branch = options.worktree.branch || 'main';
+          worktreeOptions = options.worktree;
+        } else {
+          // worktree is true (boolean), use current branch or default
+          branch = 'main'; // default fallback
+        }
+        
+        // Ensure worktree exists (creates if needed)
+        const worktreeInfo = await manager.ensureWorktree(branch, worktreeOptions);
+        cwd = worktreeInfo.path;
+      } catch (error) {
+        console.error('Failed to setup worktree:', error);
+        // Continue without worktree on error
+      }
+    }
+
     // Execute with shell, this replaces the current process
-    execSync(shellCommand, {
+    const execOptions: any = {
       stdio: 'inherit',
-    });
+      shell: true,
+      cwd, // Will be undefined if no worktree, which is fine
+    };
+
+    execSync(shellCommand, execOptions);
 
     // This line will never be reached because exec replaces the process
     // But TypeScript needs a return
