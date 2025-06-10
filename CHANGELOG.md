@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.8.3] - 2025-06-10
+
+### Fixed
+- **Worktree Execution**: Fixed worktree execution functionality that was broken in previous versions
+
 ## [2.8.2] - 2025-06-09
 
 ### Fixed
