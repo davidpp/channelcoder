@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.0] - 2025-06-10
+
+### Added
+- **Worktree Nesting Prevention**: Worktrees are now automatically created as siblings rather than nested children, preventing git repository corruption
+- **Multi-Repository Support**: Added `cwd` parameter throughout SDK functions to enable working with multiple repositories from a single script
+- **Enhanced Git Utilities**: New utility functions `isInWorktree()` and `findMainRepository()` for better repository detection and management
+
+### Changed
+- **WorktreeManager Behavior**: Worktree creation now uses main repository root detection for consistent placement
+- **API Breaking Change**: `worktreeUtils.current()` now returns main repository information instead of null when called from the main repository, matching git's native behavior
+
+### Fixed
+- **Repository Detection**: Improved detection of main repository root when working within existing worktrees
+
 ## [2.8.4] - 2025-01-16
 
 ### Fixed
