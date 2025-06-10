@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.1] - 2025-01-13
+
+### Fixed
+- **Docker Mode**: Added missing cwd parameter support to DockerOptions interface
+- **Session Management**: Added missing cwd parameter support to SessionOptions interface
+
 ## [3.0.0] - 2025-06-10
 
 ### Added
