@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.8.4] - 2025-01-16
+
+### Fixed
+- **Worktree Integration**: Interactive and detached modes now properly support worktree execution with correct working directory setup
+
 ## [2.8.3] - 2025-06-10
 
 ### Fixed
