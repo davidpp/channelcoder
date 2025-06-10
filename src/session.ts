@@ -56,6 +56,7 @@ export interface SessionOptions {
   name?: string;
   storage?: SessionStorage;
   autoSave?: boolean; // Enable real-time session file updates (default: true)
+  cwd?: string; // Working directory for git operations (defaults to process.cwd())
 }
 
 /**
@@ -92,10 +93,12 @@ export class SessionManager {
   private state: SessionState;
   private storage?: SessionStorage;
   private autoSave: boolean;
+  private cwd?: string;
 
   constructor(options?: SessionOptions) {
     this.storage = options?.storage;
     this.autoSave = options?.autoSave ?? true; // Default to true
+    this.cwd = options?.cwd;
     this.state = {
       sessionChain: [],
       messages: [],
@@ -189,6 +192,7 @@ export class SessionManager {
     const result = await fn(prompt, {
       ...options,
       resume: resumeId || options?.resume,
+      cwd: options?.cwd || this.cwd,
     });
 
     // Extract session ID from response
@@ -234,6 +238,7 @@ export class SessionManager {
     for await (const chunk of streamBase(prompt, {
       ...options,
       resume: resumeId || options?.resume,
+      cwd: options?.cwd || this.cwd,
     })) {
       // Accumulate assistant content
       assistantContent += chunk.content;
@@ -345,6 +350,7 @@ export class SessionManager {
         return interactiveBase(prompt, {
           ...options,
           resume: resumeId || options?.resume,
+          cwd: options?.cwd || this.cwd,
         });
       },
 
