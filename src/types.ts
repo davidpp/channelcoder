@@ -79,6 +79,11 @@ export interface CCOptions {
 
   // Skip all permission prompts (dangerous - use with caution!)
   dangerouslySkipPermissions?: boolean;
+
+  // Detached mode options
+  detached?: boolean; // Run in detached mode
+  logFile?: string; // Log file path for detached mode output
+  stream?: boolean; // Enable streaming output in detached mode
 }
 
 /**

@@ -1,5 +1,4 @@
-import { execSync, spawn, spawnSync } from 'node:child_process';
-import { closeSync, openSync, writeSync } from 'node:fs';
+import { execSync, spawnSync } from 'node:child_process';
 import { DockerManager } from './docker.js';
 import { loadPromptFile } from './loader.js';
 import { CCProcess } from './process.js';
@@ -84,6 +83,9 @@ function convertOptions(options: ClaudeOptions): CCOptions & PromptConfig {
     docker: options.docker,
     worktree: options.worktree,
     mode: options.mode,
+    detached: options.detached,
+    logFile: options.logFile,
+    stream: options.stream,
   };
 
   const promptConfig: PromptConfig = {};
@@ -160,9 +162,10 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
 
         // Build Claude command args
         // For stream mode, ensure output format is stream-json
-        const dockerDryRunOptions = mode === 'stream' 
-          ? { ...mergedOptions, outputFormat: 'stream-json' as const }
-          : mergedOptions;
+        const dockerDryRunOptions =
+          mode === 'stream'
+            ? { ...mergedOptions, outputFormat: 'stream-json' as const }
+            : mergedOptions;
         const claudeCmd = await ccProcess.buildCommand(dockerDryRunOptions);
         const claudeArgs = claudeCmd.slice(1); // Remove 'claude' from args
 
@@ -224,9 +227,10 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
 
     // Non-Docker dry-run
     // For stream mode, ensure output format is stream-json
-    const dryRunOptions = mode === 'stream' 
-      ? { ...mergedOptions, outputFormat: 'stream-json' as const }
-      : mergedOptions;
+    const dryRunOptions =
+      mode === 'stream'
+        ? { ...mergedOptions, outputFormat: 'stream-json' as const }
+        : mergedOptions;
     const args = await ccProcess.buildCommand(dryRunOptions);
 
     // Build the base command
@@ -278,57 +282,7 @@ const claudeImpl = async (promptOrFile: string, options: ClaudeOptions = {}): Pr
 
   // Handle detached mode
   if (options.detached) {
-    // Enable streaming output format if stream option is set
-    if (options.stream) {
-      mergedOptions.outputFormat = 'stream-json';
-      if (!options.logFile) {
-        return {
-          success: false,
-          error: 'logFile is required when using detached streaming mode',
-        };
-      }
-    }
-
-    const args = await ccProcess.buildCommand(mergedOptions);
-
-    // Set up stdio based on logFile
-    let stdio: 'ignore' | ['pipe', number, number] = 'ignore';
-    let logFd: number | undefined;
-
-    if (options.logFile) {
-      // Open log file for writing (append mode)
-      logFd = openSync(options.logFile, 'a');
-      stdio = ['pipe', logFd, logFd];
-    }
-
-    const child = spawn(args[0], args.slice(1), {
-      detached: true,
-      stdio,
-    });
-
-    // Write prompt to stdin if needed
-    if (child.stdin && !mergedOptions.resume && !mergedOptions.continue) {
-      child.stdin.write(prompt);
-      child.stdin.end();
-    }
-
-    // Unref to allow parent to exit
-    child.unref();
-
-    // Close log file descriptor if opened
-    if (logFd !== undefined) {
-      closeSync(logFd);
-    }
-
-    return {
-      success: true,
-      data: {
-        pid: child.pid,
-        detached: true,
-        logFile: options.logFile,
-        streaming: options.stream || false,
-      },
-    };
+    return ccProcess.executeDetached(prompt, mergedOptions);
   }
 
   // Execute based on mode

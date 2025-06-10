@@ -1085,4 +1085,235 @@ export class CCProcess {
 
     return worktree as WorktreeOptions & { branch: string };
   }
+
+  /**
+   * Execute in detached mode with proper context handling
+   */
+  async executeDetached(prompt: string, options: CCOptions & PromptConfig): Promise<CCResult> {
+    // Handle Worktree mode
+    if (options.worktree) {
+      return this.executeDetachedInWorktree(prompt, options);
+    }
+
+    // Handle Docker mode
+    if (options.docker) {
+      return this.executeDetachedInDocker(prompt, options);
+    }
+
+    // Regular detached execution
+    return this.executeDetachedBase(prompt, options);
+  }
+
+  /**
+   * Base detached execution implementation
+   */
+  private async executeDetachedBase(
+    prompt: string,
+    options: CCOptions & PromptConfig
+  ): Promise<CCResult> {
+    // Check if Claude CLI is available
+    if (!(await this.checkClaudeAvailable())) {
+      return {
+        success: false,
+        error:
+          'Claude CLI not found. Please install it first: npm install -g @anthropic-ai/claude-code',
+      };
+    }
+
+    // Enable streaming output format if stream option is set
+    const detachedOptions = { ...options };
+    if (options.stream) {
+      detachedOptions.outputFormat = 'stream-json';
+      if (!options.logFile) {
+        return {
+          success: false,
+          error: 'logFile is required when using detached streaming mode',
+        };
+      }
+    }
+
+    const args = await this.buildCommand(detachedOptions);
+
+    // Set up stdio based on logFile
+    let stdio: 'ignore' | ['pipe', number, number] = 'ignore';
+    let logFd: number | undefined;
+
+    if (options.logFile) {
+      // Open log file for writing (append mode)
+      const { openSync } = await import('node:fs');
+      logFd = openSync(options.logFile, 'a');
+      stdio = ['pipe', logFd, logFd];
+    }
+
+    const { spawn } = await import('node:child_process');
+    const child = spawn(args[0], args.slice(1), {
+      detached: true,
+      stdio,
+    });
+
+    // Write prompt to stdin if needed
+    if (child.stdin && !options.resume && !options.continue) {
+      child.stdin.write(prompt);
+      child.stdin.end();
+    }
+
+    // Unref to allow parent to exit
+    child.unref();
+
+    // Close log file descriptor if opened
+    if (logFd !== undefined) {
+      const { closeSync } = await import('node:fs');
+      closeSync(logFd);
+    }
+
+    return {
+      success: true,
+      data: {
+        pid: child.pid,
+        detached: true,
+        logFile: options.logFile,
+        streaming: options.stream || false,
+      },
+    };
+  }
+
+  /**
+   * Execute detached in worktree context
+   */
+  private async executeDetachedInWorktree(
+    prompt: string,
+    options: CCOptions & PromptConfig
+  ): Promise<CCResult> {
+    try {
+      // Resolve worktree configuration
+      if (!options.worktree) {
+        throw new Error('Worktree option is required but not provided');
+      }
+      const worktreeConfig = this.resolveWorktreeConfig(options.worktree);
+
+      // Ensure worktree exists
+      const worktreeInfo = await this.worktreeManager.ensureWorktree(
+        worktreeConfig.branch,
+        worktreeConfig
+      );
+
+      // Execute within worktree context
+      return await this.worktreeManager.executeInWorktree(worktreeInfo, async () => {
+        // Create new options without worktree to avoid infinite recursion
+        const { worktree: _, ...executeOptions } = options;
+
+        // Check if we also need Docker within the worktree
+        if (options.docker) {
+          return this.executeDetachedInDocker(prompt, executeOptions);
+        }
+
+        // Regular detached execution within worktree
+        return this.executeDetachedBase(prompt, executeOptions);
+      });
+    } catch (error) {
+      return {
+        success: false,
+        error: `Worktree detached execution failed: ${error}`,
+      };
+    }
+  }
+
+  /**
+   * Execute detached in Docker context
+   */
+  private async executeDetachedInDocker(
+    prompt: string,
+    options: CCOptions & PromptConfig
+  ): Promise<CCResult> {
+    try {
+      // Check if Docker is available
+      if (!(await this.dockerManager.checkDockerAvailable())) {
+        return {
+          success: false,
+          error: 'Docker not found. Please install Docker to use Docker mode.',
+        };
+      }
+
+      // Resolve Docker configuration
+      const dockerConfig = await this.dockerManager.resolveDockerConfig(options.docker || true);
+
+      // Build image if needed
+      if (dockerConfig.needsBuild && dockerConfig.dockerfilePath) {
+        const imageExists = await this.dockerManager.imageExists(dockerConfig.image);
+        if (!imageExists) {
+          console.log(`Building Docker image: ${dockerConfig.image}...`);
+          await this.dockerManager.buildImage(dockerConfig.dockerfilePath, dockerConfig.image);
+          console.log('Docker image built successfully.');
+        }
+      }
+
+      // Build Docker args for detached mode
+      const dockerArgs = this.dockerManager.buildDockerArgs(dockerConfig, false);
+
+      // Add detached flag to Docker
+      dockerArgs.unshift('-d'); // Run container in detached mode
+
+      // Build Claude command args
+      const detachedOptions = { ...options };
+      if (options.stream) {
+        detachedOptions.outputFormat = 'stream-json';
+      }
+
+      const claudeCmd = await this.buildCommand(detachedOptions);
+      const claudeArgs = claudeCmd.slice(1); // Remove 'claude' from args
+
+      // Combine Docker and Claude args
+      const fullArgs = [...dockerArgs, 'claude', ...claudeArgs];
+
+      // Set up stdio for log file if provided
+      const stdio: 'pipe' | 'inherit' = 'pipe';
+
+      const { spawn } = await import('node:child_process');
+      const proc = spawn('docker', fullArgs, {
+        stdio: [stdio, 'pipe', 'pipe'],
+      });
+
+      // Write prompt to stdin
+      if (proc.stdin && !options.resume && !options.continue) {
+        proc.stdin.write(prompt);
+        proc.stdin.end();
+      }
+
+      // Capture container ID from stdout
+      let containerId = '';
+      if (proc.stdout) {
+        proc.stdout.on('data', (chunk) => {
+          containerId += chunk.toString().trim();
+        });
+      }
+
+      // Wait for Docker to start the container
+      await new Promise<void>((resolve, reject) => {
+        proc.on('exit', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`Docker failed with exit code ${code}`));
+          }
+        });
+        proc.on('error', reject);
+      });
+
+      return {
+        success: true,
+        data: {
+          containerId: containerId.substring(0, 12), // Short container ID
+          detached: true,
+          docker: true,
+          logFile: options.logFile,
+          streaming: options.stream || false,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Docker detached execution failed: ${error}`,
+      };
+    }
+  }
 }
