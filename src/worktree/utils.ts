@@ -1,3 +1,4 @@
+import { findMainRepository, isInWorktree } from './git-utils.js';
 import { WorktreeManager } from './manager.js';
 import type { WorktreeInfo, WorktreeOptions } from './types.js';
 
@@ -24,10 +25,11 @@ export const worktreeUtils = {
    */
   async create(
     branch: string,
-    options: Omit<WorktreeOptions, 'branch'> = {}
+    options: Omit<WorktreeOptions, 'branch'> & { cwd?: string } = {}
   ): Promise<WorktreeInfo> {
-    const manager = new WorktreeManager();
-    return manager.ensureWorktree(branch, { ...options, create: true });
+    const { cwd, ...worktreeOptions } = options;
+    const manager = new WorktreeManager(cwd);
+    return manager.ensureWorktree(branch, { ...worktreeOptions, create: true });
   },
 
   /**
@@ -43,8 +45,8 @@ export const worktreeUtils = {
    * }
    * ```
    */
-  async list(): Promise<WorktreeInfo[]> {
-    const manager = new WorktreeManager();
+  async list(options?: { cwd?: string }): Promise<WorktreeInfo[]> {
+    const manager = new WorktreeManager(options?.cwd);
     return manager.listWorktrees();
   },
 
@@ -66,8 +68,9 @@ export const worktreeUtils = {
    * await worktreeUtils.remove('feature/broken', true);
    * ```
    */
-  async remove(pathOrBranch: string, force = false): Promise<void> {
-    const manager = new WorktreeManager();
+  async remove(pathOrBranch: string, options?: { force?: boolean; cwd?: string }): Promise<void> {
+    const { force = false, cwd } = options || {};
+    const manager = new WorktreeManager(cwd);
 
     // Handle both path and branch inputs
     const worktrees = await manager.listWorktrees();
@@ -94,33 +97,38 @@ export const worktreeUtils = {
    * }
    * ```
    */
-  async exists(branch: string): Promise<boolean> {
-    const manager = new WorktreeManager();
+  async exists(branch: string, options?: { cwd?: string }): Promise<boolean> {
+    const manager = new WorktreeManager(options?.cwd);
     const existing = await manager.findExistingWorktree(branch);
     return existing !== null;
   },
 
   /**
-   * Get current worktree info (if in a worktree)
+   * Get current worktree info
    *
-   * @returns Current worktree info or null if not in a worktree
+   * @returns Current worktree info (including main repo) or null if not in a git repository
    *
    * @example
    * ```typescript
    * const current = await worktreeUtils.current();
    * if (current) {
-   *   console.log(`Currently in worktree: ${current.branch}`);
-   * } else {
-   *   console.log('Not in a worktree');
+   *   console.log(`Currently in: ${current.branch}`);
+   *   if (current.branch === 'main') {
+   *     console.log('In main repository');
+   *   } else {
+   *     console.log('In worktree');
+   *   }
    * }
    * ```
    */
-  async current(): Promise<WorktreeInfo | null> {
-    const manager = new WorktreeManager();
+  async current(options?: { cwd?: string }): Promise<WorktreeInfo | null> {
+    const targetCwd = options?.cwd || process.cwd();
+    const manager = new WorktreeManager(targetCwd);
     const worktrees = await manager.listWorktrees();
-    const cwd = process.cwd();
 
-    return worktrees.find((wt) => cwd.startsWith(wt.path)) || null;
+    // Sort by path length (longest first) to match most specific path
+    const sorted = worktrees.sort((a, b) => b.path.length - a.path.length);
+    return sorted.find((wt) => targetCwd.startsWith(wt.path)) || null;
   },
 
   /**
@@ -137,8 +145,8 @@ export const worktreeUtils = {
    * }
    * ```
    */
-  async find(branch: string): Promise<WorktreeInfo | null> {
-    const manager = new WorktreeManager();
+  async find(branch: string, options?: { cwd?: string }): Promise<WorktreeInfo | null> {
+    const manager = new WorktreeManager(options?.cwd);
     return manager.findExistingWorktree(branch);
   },
 
@@ -161,8 +169,9 @@ export const worktreeUtils = {
    * await worktreeUtils.cleanup();
    * ```
    */
-  async cleanup(dryRun = false): Promise<string[]> {
-    const manager = new WorktreeManager();
+  async cleanup(options?: { dryRun?: boolean; cwd?: string }): Promise<string[]> {
+    const { dryRun = false, cwd } = options || {};
+    const manager = new WorktreeManager(cwd);
     const worktrees = await manager.listWorktrees();
     const toRemove: string[] = [];
 
@@ -193,4 +202,19 @@ export const worktreeUtils = {
 
     return toRemove;
   },
+
+  /**
+   * Check if a directory is inside a git worktree
+   * @param cwd - Directory to check (defaults to process.cwd())
+   * @returns true if in a worktree, false if in main repo
+   */
+  isInWorktree,
+
+  /**
+   * Find the main repository root from any location
+   * @param cwd - Directory to start from (defaults to process.cwd())
+   * @returns absolute path to the main repository root
+   * @throws Error if not in a git repository
+   */
+  findMainRepository,
 };

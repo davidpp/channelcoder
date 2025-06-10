@@ -55,7 +55,7 @@ export class WorktreeError extends Error {
       | 'GIT_ERROR'
       | 'WORKTREE_EXISTS'
       | 'INVALID_OPTIONS',
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = 'WorktreeError';

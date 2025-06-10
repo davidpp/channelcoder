@@ -32,12 +32,13 @@ import type { WorktreeInfo, WorktreeOptions } from './types.js';
 export async function worktree<T>(
   branch: string,
   callback: (info: WorktreeInfo) => Promise<T>,
-  options: WorktreeOptions = {}
+  options: WorktreeOptions & { cwd?: string } = {}
 ): Promise<T> {
-  const manager = new WorktreeManager();
+  const { cwd, ...worktreeOptions } = options;
+  const manager = new WorktreeManager(cwd);
 
   // Ensure worktree exists (upsert behavior)
-  const worktreeInfo = await manager.ensureWorktree(branch, options);
+  const worktreeInfo = await manager.ensureWorktree(branch, worktreeOptions);
 
   try {
     // Execute callback within worktree context
@@ -46,7 +47,7 @@ export async function worktree<T>(
     });
   } finally {
     // Handle cleanup if requested
-    if (options.cleanup !== false && worktreeInfo.autoCreated) {
+    if (worktreeOptions.cleanup !== false && worktreeInfo.autoCreated) {
       try {
         await manager.removeWorktree(worktreeInfo.path);
       } catch (error) {

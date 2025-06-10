@@ -1,6 +1,7 @@
 import { basename, dirname, join, resolve } from 'node:path';
 import { cwd } from 'node:process';
 import simpleGit, { type SimpleGit } from 'simple-git';
+import { findMainRepository, getMainRepoGit } from './git-utils.js';
 import type {
   ResolvedWorktreeConfig,
   WorktreeError,
@@ -14,10 +15,29 @@ import type {
 export class WorktreeManager {
   private git: SimpleGit;
   private projectRoot: string;
+  private mainRepoRoot?: string;
 
   constructor(projectRoot?: string) {
     this.projectRoot = projectRoot || cwd();
     this.git = simpleGit(this.projectRoot);
+  }
+
+  /**
+   * Get the main repository root (cached)
+   */
+  private async getMainRepoRoot(): Promise<string> {
+    if (!this.mainRepoRoot) {
+      this.mainRepoRoot = await findMainRepository(this.projectRoot);
+    }
+    return this.mainRepoRoot;
+  }
+
+  /**
+   * Get git instance for the main repository
+   */
+  private async getMainRepoGit(): Promise<SimpleGit> {
+    const mainRoot = await this.getMainRepoRoot();
+    return simpleGit(mainRoot);
   }
 
   /**
@@ -26,7 +46,7 @@ export class WorktreeManager {
   async ensureWorktree(branch: string, options: WorktreeOptions = {}): Promise<WorktreeInfo> {
     try {
       // Resolve configuration
-      const config = this.resolveConfig(branch, options);
+      const config = await this.resolveConfig(branch, options);
 
       // Check if worktree already exists
       const existing = await this.findExistingWorktree(config.branch);
@@ -94,7 +114,12 @@ export class WorktreeManager {
 
       return null;
     } catch (error) {
-      // If worktree command fails, assume no worktrees exist
+      // If worktree command fails (e.g., not a git repo), assume no worktrees exist
+      if (error instanceof Error && error.message.includes('not a git repository')) {
+        return null;
+      }
+      // For other errors, we should still return null but log for debugging
+      console.debug('Worktree list failed:', error);
       return null;
     }
   }
@@ -104,7 +129,9 @@ export class WorktreeManager {
    */
   async listWorktrees(): Promise<WorktreeInfo[]> {
     try {
-      const worktrees = await this.git.raw(['worktree', 'list', '--porcelain']);
+      // Always list from main repo to get all worktrees
+      const mainGit = await this.getMainRepoGit();
+      const worktrees = await mainGit.raw(['worktree', 'list', '--porcelain']);
       const lines = worktrees.split('\n').filter(Boolean);
 
       const result: WorktreeInfo[] = [];
@@ -138,6 +165,16 @@ export class WorktreeManager {
 
       return result;
     } catch (error) {
+      // If not a git repository or worktree command fails, return empty array
+      if (
+        error instanceof Error &&
+        (error.message.includes('not a git repository') ||
+          error.message.includes('unknown command'))
+      ) {
+        return [];
+      }
+      // Log unexpected errors for debugging
+      console.debug('Failed to list worktrees:', error);
       return [];
     }
   }
@@ -147,11 +184,13 @@ export class WorktreeManager {
    */
   async removeWorktree(path: string, force = false): Promise<void> {
     try {
+      // Always remove from main repo
+      const mainGit = await this.getMainRepoGit();
       const args = ['worktree', 'remove'];
       if (force) args.push('--force');
       args.push(path);
 
-      await this.git.raw(args);
+      await mainGit.raw(args);
     } catch (error) {
       throw this.createWorktreeError(error, `Failed to remove worktree at ${path}`);
     }
@@ -174,8 +213,11 @@ export class WorktreeManager {
   /**
    * Resolve configuration options into concrete config
    */
-  private resolveConfig(branch: string, options: WorktreeOptions): ResolvedWorktreeConfig {
-    const path = options.path || this.generateWorktreePath(branch);
+  private async resolveConfig(
+    branch: string,
+    options: WorktreeOptions
+  ): Promise<ResolvedWorktreeConfig> {
+    const path = options.path || (await this.generateWorktreePath(branch));
 
     return {
       branch,
@@ -189,11 +231,14 @@ export class WorktreeManager {
   /**
    * Generate a logical path for a worktree based on branch name
    */
-  private generateWorktreePath(branch: string): string {
+  private async generateWorktreePath(branch: string): Promise<string> {
     // Clean branch name for filesystem
     const safeBranch = branch.replace(/[\/\\:*?"<>|]/g, '-');
-    const projectName = basename(this.projectRoot);
-    const parentDir = dirname(this.projectRoot);
+
+    // Use main repo root to ensure siblings
+    const mainRoot = await this.getMainRepoRoot();
+    const projectName = basename(mainRoot);
+    const parentDir = dirname(mainRoot);
 
     return join(parentDir, `${projectName}-${safeBranch}`);
   }
@@ -240,6 +285,8 @@ export class WorktreeManager {
    */
   private async createWorktree(config: ResolvedWorktreeConfig): Promise<void> {
     try {
+      // Always create from main repo to ensure correct placement
+      const mainGit = await this.getMainRepoGit();
       const args = ['worktree', 'add', config.path];
 
       if (config.base) {
@@ -250,7 +297,7 @@ export class WorktreeManager {
         args.push(config.branch);
       }
 
-      await this.git.raw(args);
+      await mainGit.raw(args);
     } catch (error) {
       throw this.createWorktreeError(
         error,
@@ -262,15 +309,21 @@ export class WorktreeManager {
   /**
    * Create a standardized WorktreeError
    */
-  private createWorktreeError(originalError: any, message: string): WorktreeError {
+  private createWorktreeError(originalError: unknown, message: string): WorktreeError {
     const { WorktreeError } = require('./types.js');
 
     if (originalError instanceof WorktreeError) {
-      return originalError;
+      return originalError as WorktreeError;
     }
 
-    let code: any = 'GIT_ERROR';
-    const errorMessage = originalError?.message || String(originalError);
+    let code:
+      | 'BRANCH_NOT_FOUND'
+      | 'PATH_CONFLICT'
+      | 'GIT_ERROR'
+      | 'WORKTREE_EXISTS'
+      | 'INVALID_OPTIONS' = 'GIT_ERROR';
+    const errorMessage =
+      originalError instanceof Error ? originalError.message : String(originalError);
 
     if (errorMessage.includes('already exists')) {
       code = 'WORKTREE_EXISTS';

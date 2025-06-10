@@ -14,6 +14,7 @@ import type {
   StreamChunk,
 } from './types.js';
 import { validateInput } from './utils/validation.js';
+import type { WorktreeOptions } from './worktree/types.js';
 
 /**
  * Options for the claude() function, mapping to Claude CLI flags
@@ -56,6 +57,9 @@ export interface ClaudeOptions {
 
   // Worktree execution
   worktree?: boolean | string | import('./worktree/types.js').WorktreeOptions; // Run in git worktree
+
+  // Working directory
+  cwd?: string; // Working directory for command execution (defaults to process.cwd())
 }
 
 // Internal: Detect if input is a file path
@@ -86,6 +90,7 @@ function convertOptions(options: ClaudeOptions): CCOptions & PromptConfig {
     detached: options.detached,
     logFile: options.logFile,
     stream: options.stream,
+    cwd: options.cwd,
   };
 
   const promptConfig: PromptConfig = {};
@@ -403,13 +408,13 @@ async function launchInteractive(
     let cwd: string | undefined;
     if (options.worktree) {
       const { WorktreeManager } = await import('./worktree/manager.js');
-      const manager = new WorktreeManager();
-      
+      const manager = new WorktreeManager(options.cwd);
+
       try {
         // Resolve worktree configuration
         let branch: string;
-        let worktreeOptions: any = {};
-        
+        let worktreeOptions: WorktreeOptions = {};
+
         if (typeof options.worktree === 'string') {
           branch = options.worktree;
         } else if (typeof options.worktree === 'object') {
@@ -419,7 +424,7 @@ async function launchInteractive(
           // worktree is true (boolean), use current branch or default
           branch = 'main'; // default fallback
         }
-        
+
         // Ensure worktree exists (creates if needed)
         const worktreeInfo = await manager.ensureWorktree(branch, worktreeOptions);
         cwd = worktreeInfo.path;
@@ -430,12 +435,12 @@ async function launchInteractive(
     }
 
     // Execute with shell, this replaces the current process
-    const execOptions: any = {
+    const execOptions: Parameters<typeof execSync>[1] = {
       stdio: 'inherit',
-      shell: true,
       cwd, // Will be undefined if no worktree, which is fine
     };
 
+    // Only Node.js v20+ accepts shell: true, use default shell for compatibility
     execSync(shellCommand, execOptions);
 
     // This line will never be reached because exec replaces the process

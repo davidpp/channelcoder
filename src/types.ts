@@ -84,6 +84,9 @@ export interface CCOptions {
   detached?: boolean; // Run in detached mode
   logFile?: string; // Log file path for detached mode output
   stream?: boolean; // Enable streaming output in detached mode
+
+  // Working directory
+  cwd?: string; // Working directory for git operations (defaults to process.cwd())
 }
 
 /**

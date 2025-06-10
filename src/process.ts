@@ -29,7 +29,7 @@ export class CCProcess {
       process.env.SKIP_CLAUDE_CHECK === 'true';
 
     this.dockerManager = new DockerManager();
-    this.worktreeManager = new WorktreeManager();
+    this.worktreeManager = new WorktreeManager(defaultOptions.cwd);
   }
 
   /**
