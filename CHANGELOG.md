@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.2] - 2025-01-07
+
+### Fixed
+- **Worktree Execution**: Fixed export structure and cwd handling for worktree execution functionality, ensuring proper directory context and module exports
+
 ## [3.0.1] - 2025-01-13
 
 ### Fixed
