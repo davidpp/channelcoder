@@ -100,6 +100,7 @@ export class CCProcess {
     try {
       const proc = spawn(command, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: options.cwd,
       });
 
       // Write prompt to stdin
@@ -313,6 +314,7 @@ export class CCProcess {
 
     const proc = spawn(command, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
+      cwd: options.cwd,
     });
 
     // Write prompt to stdin
@@ -1007,7 +1009,8 @@ export class CCProcess {
       // Execute within worktree context
       return await this.worktreeManager.executeInWorktree(worktreeInfo, async () => {
         // Create new options without worktree to avoid infinite recursion
-        const { worktree: _, ...executeOptions } = options;
+        // Also remove cwd since we're now in the worktree directory
+        const { worktree: _, cwd: __, ...executeOptions } = options;
 
         // Check if we also need Docker within the worktree
         if (options.docker) {
@@ -1048,7 +1051,8 @@ export class CCProcess {
       // Create async generator function that will run in worktree context
       const streamGenerator = async function* (self: CCProcess) {
         // Create new options without worktree to avoid infinite recursion
-        const { worktree: _, ...streamOptions } = options;
+        // Also remove cwd since we're now in the worktree directory
+        const { worktree: _, cwd: __, ...streamOptions } = options;
 
         // Check if we also need Docker within the worktree
         if (options.docker) {
@@ -1158,6 +1162,7 @@ export class CCProcess {
     const child = spawn(args[0], args.slice(1), {
       detached: true,
       stdio,
+      cwd: options.cwd,
     });
 
     // Write prompt to stdin if needed
@@ -1209,7 +1214,8 @@ export class CCProcess {
       // Execute within worktree context
       return await this.worktreeManager.executeInWorktree(worktreeInfo, async () => {
         // Create new options without worktree to avoid infinite recursion
-        const { worktree: _, ...executeOptions } = options;
+        // Also remove cwd since we're now in the worktree directory
+        const { worktree: _, cwd: __, ...executeOptions } = options;
 
         // Check if we also need Docker within the worktree
         if (options.docker) {

@@ -41,10 +41,13 @@ export * as streamParser from './stream-parser/index.js';
 export { parseLogFile, monitorLog } from './stream-parser/index.js';
 
 // Export worktree utilities
-export * as worktreeUtils from './worktree/index.js';
+export { worktreeUtils } from './worktree/index.js';
 
 // High-level worktree exports for common use cases
 export { worktree } from './worktree/index.js';
+
+// Export WorktreeManager for advanced usage
+export { WorktreeManager } from './worktree/index.js';
 
 // Re-export worktree types for convenience
 export type {
