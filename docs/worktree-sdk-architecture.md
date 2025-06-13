@@ -22,7 +22,7 @@ await worktree('feature/complex', async (wt) => {
   await claude('Implement part 1');
   await claude('Add tests');
   return wt.info;
-}, { base: 'develop', cleanup: false });
+}, { base: 'develop' });
 ```
 
 ### 3. **Composable Functions**
@@ -83,7 +83,6 @@ interface WorktreeOptions {
   branch?: string;              // Target branch (required for creation)
   base?: string;                // Base branch for new worktree
   path?: string;                // Custom path (auto-generated if not provided)
-  cleanup?: boolean;            // Remove worktree after execution
   create?: boolean;             // Force creation vs. error if exists
 }
 
@@ -354,11 +353,6 @@ async function executeInWorktree<T>(
     return await callback();
   } finally {
     process.chdir(originalCwd);
-    
-    // Optional cleanup
-    if (worktreeInfo.cleanup !== false) {
-      await this.cleanupWorktree(worktreeInfo);
-    }
   }
 }
 ```
@@ -475,8 +469,8 @@ channelcoder "Plan feature" --worktree feature/api --session api-development
 channelcoder "Test changes" --worktree experiment/risky --docker --tools Bash,Read,Write
 
 # Utility commands
-channelcoder --list-worktrees
-channelcoder --cleanup-worktrees
+channelcoder worktree list
+channelcoder worktree cleanup
 ```
 
 ## Testing Strategy
@@ -485,7 +479,6 @@ channelcoder --cleanup-worktrees
 - Worktree creation and detection
 - Path generation logic
 - Error handling scenarios
-- Cleanup behavior
 
 ### Integration Tests
 - Session + worktree workflows

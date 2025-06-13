@@ -145,11 +145,6 @@ export const worktreeFlags = {
     brief: 'Base branch for new worktree',
     optional: true,
   } satisfies TypedFlagParameter<string>,
-  worktreeKeep: {
-    kind: 'boolean' as const,
-    default: false,
-    brief: 'Keep worktree after execution',
-  } satisfies TypedFlagParameter<boolean>,
 };
 
 // Additional execution flags

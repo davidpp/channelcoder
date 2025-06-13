@@ -51,7 +51,6 @@ interface RunFlags {
   // Worktree
   worktree?: string;
   worktreeBase?: string;
-  worktreeKeep?: boolean;
 }
 
 /**
@@ -111,7 +110,6 @@ function buildWorktreeOptions(flags: RunFlags): WorktreeOptions | undefined {
   return {
     branch: flags.worktree,
     base: flags.worktreeBase,
-    cleanup: !flags.worktreeKeep,
   };
 }
 

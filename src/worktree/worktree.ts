@@ -24,8 +24,7 @@ import type { WorktreeInfo, WorktreeOptions } from './types.js';
  * await worktree('experiment/risky', async (wt) => {
  *   return await claude('Test changes', { docker: true });
  * }, {
- *   base: 'main',
- *   cleanup: false // Keep worktree after execution
+ *   base: 'main'
  * });
  * ```
  */
@@ -40,20 +39,8 @@ export async function worktree<T>(
   // Ensure worktree exists (upsert behavior)
   const worktreeInfo = await manager.ensureWorktree(branch, worktreeOptions);
 
-  try {
-    // Execute callback within worktree context
-    return await manager.executeInWorktree(worktreeInfo, async () => {
-      return callback(worktreeInfo);
-    });
-  } finally {
-    // Handle cleanup if requested
-    if (worktreeOptions.cleanup !== false && worktreeInfo.autoCreated) {
-      try {
-        await manager.removeWorktree(worktreeInfo.path);
-      } catch (error) {
-        // Don't fail the operation if cleanup fails
-        console.warn(`Warning: Failed to cleanup worktree at ${worktreeInfo.path}:`, error);
-      }
-    }
-  }
+  // Execute callback within worktree context
+  return await manager.executeInWorktree(worktreeInfo, async () => {
+    return callback(worktreeInfo);
+  });
 }

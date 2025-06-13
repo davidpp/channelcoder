@@ -223,7 +223,6 @@ export class WorktreeManager {
       branch,
       path: resolve(path),
       base: options.base,
-      cleanup: options.cleanup ?? true,
       create: options.create ?? false,
     };
   }

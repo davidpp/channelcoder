@@ -8,8 +8,6 @@ export interface WorktreeOptions {
   base?: string;
   /** Custom path for worktree (auto-generated if not provided) */
   path?: string;
-  /** Whether to remove worktree after execution (default: true for temporary operations) */
-  cleanup?: boolean;
   /** Force creation vs. error if exists (default: false - upsert behavior) */
   create?: boolean;
 }
@@ -39,7 +37,6 @@ export interface ResolvedWorktreeConfig {
   branch: string;
   path: string;
   base?: string;
-  cleanup: boolean;
   create: boolean;
 }
 

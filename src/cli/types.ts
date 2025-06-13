@@ -42,7 +42,6 @@ export interface RunOptions extends CliGlobals {
   // Worktree
   worktree?: string;
   worktreeBase?: string;
-  worktreeKeep?: boolean;
 }
 
 export interface SessionListOptions extends CliGlobals {
