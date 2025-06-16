@@ -1,4 +1,6 @@
 ---
+description: "Analyzes development tasks and provides structured feedback with categorization"
+
 # Input schema - validates data before sending
 input:
   taskId: string
@@ -21,6 +23,11 @@ systemPrompt: "You are a task analysis expert. Provide structured analysis."
 allowedTools:
   - Read
   - Grep
+
+# Additional metadata (examples of user-defined fields)
+author: "ChannelCoder Team"
+version: "1.0.0"
+tags: ["development", "analysis", "planning"]
 ---
 
 # Task Analysis

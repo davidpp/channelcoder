@@ -22,7 +22,7 @@ export const FrontmatterSchema = z
       })
       .optional(),
   })
-  .strict(); // Disallow unknown keys
+  .passthrough(); // Allow additional fields
 
 export type Frontmatter = z.infer<typeof FrontmatterSchema>;
 
@@ -61,34 +61,60 @@ async function processConfig(data: Record<string, unknown>): Promise<PromptConfi
   const validated = parsed.data;
   const config: PromptConfig = {};
 
-  // Copy validated options
-  if (validated.systemPrompt !== undefined) {
-    config.systemPrompt = validated.systemPrompt;
+  // Extract known fields
+  const {
+    description,
+    systemPrompt,
+    appendSystemPrompt,
+    allowedTools,
+    disallowedTools,
+    mcpConfig,
+    permissionPromptTool,
+    input,
+    output,
+    session,
+    ...metadata
+  } = validated;
+
+  // Copy official fields
+  if (description !== undefined && typeof description === 'string') {
+    config.description = description;
   }
-  if (validated.appendSystemPrompt !== undefined) {
-    config.appendSystemPrompt = validated.appendSystemPrompt;
+  if (systemPrompt !== undefined) {
+    config.systemPrompt = systemPrompt;
   }
-  if (validated.allowedTools !== undefined) {
-    config.allowedTools = validated.allowedTools;
+  if (appendSystemPrompt !== undefined) {
+    config.appendSystemPrompt = appendSystemPrompt;
   }
-  if (validated.disallowedTools !== undefined) {
-    config.disallowedTools = validated.disallowedTools;
+  if (allowedTools !== undefined) {
+    config.allowedTools = allowedTools;
   }
-  if (validated.mcpConfig !== undefined) {
-    config.mcpConfig = validated.mcpConfig;
+  if (disallowedTools !== undefined) {
+    config.disallowedTools = disallowedTools;
   }
-  if (validated.permissionPromptTool !== undefined) {
-    config.permissionPromptTool = validated.permissionPromptTool;
+  if (mcpConfig !== undefined) {
+    config.mcpConfig = mcpConfig;
+  }
+  if (permissionPromptTool !== undefined) {
+    config.permissionPromptTool = permissionPromptTool;
+  }
+  if (session !== undefined) {
+    config.session = session;
   }
 
   // Process input schema
-  if (validated.input) {
-    config.input = parseSchema(validated.input, 'input');
+  if (input) {
+    config.input = parseSchema(input, 'input');
   }
 
   // Process output schema
-  if (validated.output) {
-    config.output = parseSchema(validated.output, 'output');
+  if (output) {
+    config.output = parseSchema(output, 'output');
+  }
+
+  // Store additional metadata
+  if (Object.keys(metadata).length > 0) {
+    config.metadata = metadata;
   }
 
   return config;

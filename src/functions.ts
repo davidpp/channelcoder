@@ -39,6 +39,7 @@ export interface ClaudeOptions {
   maxTurns?: number; // Limit agentic turns
   mode?: 'run' | 'stream' | 'interactive'; // Execution mode
   includeEvents?: boolean; // Include event tracking
+  dangerouslySkipPermissions?: boolean; // Skip permission prompts (use with caution!)
 
   // Other
   verbose?: boolean; // Verbose output

@@ -1,6 +1,8 @@
 import { type CommandContext, buildCommand } from '@stricli/core';
+import type { ClaudeOptions } from '../../functions.js';
 import { run } from '../../index.js';
-import type { ClaudeOptions, DockerOptions, WorktreeOptions } from '../../types.js';
+import type { DockerOptions, InterpolationData } from '../../types.js';
+import type { WorktreeOptions } from '../../worktree/types.js';
 import {
   dataFlags,
   dockerFlags,
@@ -56,7 +58,7 @@ interface RunFlags {
 /**
  * Parse data from flags
  */
-async function parseData(flags: RunFlags): Promise<Record<string, any>> {
+async function parseData(flags: RunFlags): Promise<Record<string, unknown>> {
   let data = {};
 
   if (flags.dataStdin) {
@@ -116,12 +118,12 @@ function buildWorktreeOptions(flags: RunFlags): WorktreeOptions | undefined {
 /**
  * Build Claude options from flags
  */
-function buildOptions(flags: RunFlags, data: Record<string, any>): Partial<ClaudeOptions> {
+function buildOptions(flags: RunFlags, data: Record<string, unknown>): Partial<ClaudeOptions> {
   const options: Partial<ClaudeOptions> = {};
 
   // Data
   if (Object.keys(data).length > 0) {
-    options.data = data;
+    options.data = data as InterpolationData;
   }
 
   // System prompts

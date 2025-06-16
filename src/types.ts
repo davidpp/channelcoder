@@ -24,6 +24,9 @@ export interface CCResult<T = unknown> {
  * Configuration for prompts (from frontmatter or programmatic)
  */
 export interface PromptConfig {
+  // Description of the prompt
+  description?: string;
+
   // Input schema for validation
   input?: z.ZodSchema | Record<string, z.ZodType>;
 
@@ -48,6 +51,9 @@ export interface PromptConfig {
   session?: {
     required?: boolean;
   };
+
+  // Additional user-defined metadata
+  metadata?: Record<string, unknown>;
 }
 
 /**

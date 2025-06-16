@@ -134,15 +134,39 @@ Content`;
       expect(result.content).toBe('Just content, no frontmatter');
     });
 
-    test('should reject invalid frontmatter keys', async () => {
+    test('should accept description field and pass through additional fields', async () => {
       mockedReadFileSync.mockReturnValue(`---
-invalidKey: "This should fail"
-temperature: 0.7
+description: "A helpful task analyzer"
+author: "Jane Doe"
+version: "1.0.0"
 systemPrompt: "Valid prompt"
+customField: "custom value"
 ---
 Content`);
 
-      await expect(loadPromptFile('test.md')).rejects.toThrow('Invalid frontmatter');
+      const result = await loadPromptFile('test.md');
+
+      expect(result.config.description).toBe('A helpful task analyzer');
+      expect(result.config.systemPrompt).toBe('Valid prompt');
+      expect(result.config.metadata).toEqual({
+        author: 'Jane Doe',
+        version: '1.0.0',
+        customField: 'custom value',
+      });
+    });
+
+    test('should handle description field without other metadata', async () => {
+      mockedReadFileSync.mockReturnValue(`---
+description: "Simple prompt for testing"
+systemPrompt: "You are helpful"
+---
+Content`);
+
+      const result = await loadPromptFile('test.md');
+
+      expect(result.config.description).toBe('Simple prompt for testing');
+      expect(result.config.systemPrompt).toBe('You are helpful');
+      expect(result.config.metadata).toBeUndefined();
     });
   });
 

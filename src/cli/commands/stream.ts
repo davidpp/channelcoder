@@ -1,6 +1,7 @@
 import { type CommandContext, buildCommand } from '@stricli/core';
+import type { ClaudeOptions } from '../../functions.js';
 import { stream } from '../../index.js';
-import type { ClaudeOptions } from '../../types.js';
+import type { InterpolationData } from '../../types.js';
 import {
   dataFlags,
   executionFlags,
@@ -38,7 +39,7 @@ interface StreamFlags {
 /**
  * Parse data from flags
  */
-async function parseData(flags: StreamFlags): Promise<Record<string, any>> {
+async function parseData(flags: StreamFlags): Promise<Record<string, unknown>> {
   let data = {};
 
   if (flags.dataStdin) {
@@ -56,12 +57,12 @@ async function parseData(flags: StreamFlags): Promise<Record<string, any>> {
 /**
  * Build Claude options from flags
  */
-function buildOptions(flags: StreamFlags, data: Record<string, any>): Partial<ClaudeOptions> {
+function buildOptions(flags: StreamFlags, data: Record<string, unknown>): Partial<ClaudeOptions> {
   const options: Partial<ClaudeOptions> = {};
 
   // Data
   if (Object.keys(data).length > 0) {
-    options.data = data;
+    options.data = data as InterpolationData;
   }
 
   // System prompts
@@ -107,7 +108,7 @@ export const streamCommand = buildCommand({
 
     if (!promptSource) {
       this.process.stderr.write('Error: Prompt file or text is required\n');
-      this.process.exit(1);
+      process.exit(1);
       return;
     }
 
@@ -125,12 +126,12 @@ export const streamCommand = buildCommand({
           }
         } else {
           // --parse flag: Output raw JSON chunks
-          this.process.stdout.write(JSON.stringify(chunk) + '\n');
+          this.process.stdout.write(`${JSON.stringify(chunk)}\n`);
         }
       }
     } catch (error) {
       this.process.stderr.write(`Error: ${error}\n`);
-      this.process.exit(1);
+      process.exit(1);
     }
   },
   parameters: {
@@ -153,8 +154,8 @@ export const streamCommand = buildCommand({
       ...executionFlags,
       parse: {
         kind: 'boolean' as const,
-        default: false,
         brief: 'Output raw JSON chunks instead of content',
+        optional: true as const,
       } as const,
     },
     aliases: {
